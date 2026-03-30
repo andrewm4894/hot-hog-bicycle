@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hot Hog on a Bicycle</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="/static/posthog-init.js"></script>
+</head>
+<body>
+    <div class="container stagger">
+        <header>
+            <h1>Hot Hog<br>on a Bicycle</h1>
+            <p class="tagline">See how the sausage is made.</p>
+            <p class="powered-by">with PostHog LLM Analytics</p>
+        </header>
+
+        <div class="card" style="text-align: center;">
+            <div class="hero-vs">
+                <span>Human</span>
+                <span class="vs-label">VS</span>
+                <span>AI</span>
+            </div>
+
+            <p class="card-description">
+                You get 3 prompts to make the best SVG of a hot dog riding a bicycle.
+                An AI challenger does the same. A blind judge picks the winner.
+                <br><br>
+                Both you and the AI get the same randomly-assigned model.
+                You write your own prompts. The AI writes its own.
+                <strong style="color: var(--mustard);">Who's the better prompt engineer?</strong>
+            </p>
+
+            <div class="name-input-wrap">
+                <input type="text" id="player-name" placeholder="Your name / handle" autocomplete="off">
+                <button class="btn btn-primary" id="start-btn" onclick="startGame()">
+                    Go
+                </button>
+            </div>
+        </div>
+
+        <nav>
+            <a href="/gallery">Gallery</a>
+            <a href="/leaderboard">Matches</a>
+        </nav>
+    </div>
+
+    <script>
+        async function startGame() {
+            const name = document.getElementById('player-name').value.trim();
+            if (!name) {
+                document.getElementById('player-name').focus();
+                return;
+            }
+
+            const btn = document.getElementById('start-btn');
+            btn.disabled = true;
+            btn.textContent = '...';
+
+            try {
+                const res = await fetch('/api/game/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ player_name: name, session_id: getPostHogSessionId() }),
+                });
+                const data = await res.json();
+                window.location.href = `/play/${data.game_id}`;
+            } catch (err) {
+                btn.disabled = false;
+                btn.textContent = 'Go';
+                alert('Failed to start game: ' + err.message);
+            }
+        }
+
+        document.getElementById('player-name').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') startGame();
+        });
+    </script>
+</body>
+</html>

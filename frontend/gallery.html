@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gallery - Hot Hog on a Bicycle</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="/static/posthog-init.js"></script>
+    <style>
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+        .gallery-item {
+            background: var(--surface);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            overflow: hidden;
+            transition: border-color 0.2s, transform 0.15s;
+        }
+        .gallery-item:hover {
+            border-color: rgba(255,255,255,0.15);
+            transform: translateY(-2px);
+        }
+        .gallery-item .svg-preview {
+            min-height: 180px;
+            margin: 0;
+            border-radius: 0;
+            padding: 0.75rem;
+        }
+        .gallery-item .svg-preview svg {
+            max-height: 200px;
+        }
+        .gallery-info {
+            padding: 0.75rem 1rem;
+        }
+        .gallery-prompt {
+            font-family: var(--font-mono);
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            margin-bottom: 0.5rem;
+        }
+        .gallery-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .gallery-author {
+            font-size: 0.82rem;
+            font-weight: 600;
+        }
+        .gallery-author.human { color: var(--relish); }
+        .gallery-author.ai { color: var(--ketchup-bright); }
+        .gallery-fork-btn {
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            padding: 0.3rem 0.6rem;
+            background: rgba(255,215,0,0.1);
+            color: var(--mustard);
+            border: 1px solid rgba(255,215,0,0.2);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .gallery-fork-btn:hover {
+            background: rgba(255,215,0,0.2);
+        }
+        .fork-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        .fork-modal.active { display: flex; }
+        .fork-modal-content {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            max-width: 420px;
+            width: 100%;
+        }
+        .fork-modal-content h3 {
+            font-family: var(--font-display);
+            margin-bottom: 0.75rem;
+        }
+        .fork-modal-content .svg-preview {
+            min-height: 150px;
+            margin: 0.75rem 0;
+        }
+        .fork-modal-content .svg-preview svg {
+            max-height: 180px;
+        }
+        .fork-modal-actions {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+        .fork-modal-actions input {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container stagger">
+        <header>
+            <h1>Hot Hog<br>on a Bicycle</h1>
+            <p class="tagline">Gallery</p>
+        </header>
+
+        <div class="gallery-grid" id="gallery">
+            <p style="color: var(--text-dim); font-style: italic; grid-column: 1/-1; text-align: center; padding: 2rem;">Loading gallery...</p>
+        </div>
+
+        <nav>
+            <a href="/">Play</a>
+            <a href="/leaderboard">Matches</a>
+        </nav>
+    </div>
+
+    <!-- Fork modal -->
+    <div class="fork-modal" id="fork-modal" onclick="if(event.target===this)closeForkModal()">
+        <div class="fork-modal-content">
+            <h3>Fork this SVG</h3>
+            <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 0.5rem;">Start a new game using this SVG's conversation as your starting point. You'll continue prompting from here.</p>
+            <div class="svg-preview" id="fork-preview"></div>
+            <p id="fork-prompt" style="font-family: var(--font-mono); font-size: 0.78rem; color: var(--text-dim); margin-top: 0.5rem; line-height: 1.4;"></p>
+            <div class="fork-modal-actions">
+                <input type="text" id="fork-name" placeholder="Your name / handle" autocomplete="off">
+                <button class="btn btn-primary" id="fork-btn" onclick="doFork()">Fork</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let forkRoundId = null;
+
+        async function loadGallery() {
+            const res = await fetch('/api/gallery');
+            const items = await res.json();
+            const grid = document.getElementById('gallery');
+
+            if (items.length === 0) {
+                grid.innerHTML = '<p style="color: var(--text-dim); font-style: italic; grid-column: 1/-1; text-align: center; padding: 2rem;">No SVGs yet. Play a game to fill the gallery!</p>';
+                return;
+            }
+
+            grid.innerHTML = items.map(item => `
+                <div class="gallery-item">
+                    <div class="svg-preview">${item.svg}</div>
+                    <div class="gallery-info">
+                        <div class="gallery-prompt">${item.prompt}</div>
+                        <div class="gallery-meta">
+                            <span>
+                                <span class="gallery-author ${item.is_human ? 'human' : 'ai'}">${item.is_human ? item.player_name : 'AI'}</span>
+                                <span class="model-badge" style="font-size: 0.68rem; margin-left: 0.25rem;">${item.model.split('/').pop()}</span>
+                            </span>
+                            <button class="gallery-fork-btn" onclick="openForkModal(${item.round_id}, ${JSON.stringify(item.svg).replace(/"/g, '&quot;')}, ${JSON.stringify(item.prompt).replace(/"/g, '&quot;')})">Fork &rarr;</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function openForkModal(roundId, svg, prompt) {
+            forkRoundId = roundId;
+            document.getElementById('fork-preview').innerHTML = svg;
+            document.getElementById('fork-prompt').textContent = prompt;
+            document.getElementById('fork-modal').classList.add('active');
+            document.getElementById('fork-name').focus();
+        }
+
+        function closeForkModal() {
+            document.getElementById('fork-modal').classList.remove('active');
+            forkRoundId = null;
+        }
+
+        async function doFork() {
+            const name = document.getElementById('fork-name').value.trim();
+            if (!name) {
+                document.getElementById('fork-name').focus();
+                return;
+            }
+
+            const btn = document.getElementById('fork-btn');
+            btn.disabled = true;
+            btn.textContent = '...';
+
+            try {
+                const res = await fetch('/api/game/fork', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        player_name: name,
+                        fork_round_id: forkRoundId,
+                        session_id: getPostHogSessionId(),
+                    }),
+                });
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || 'Fork failed');
+                }
+                const data = await res.json();
+                window.location.href = `/play/${data.game_id}`;
+            } catch (err) {
+                alert('Error: ' + err.message);
+                btn.disabled = false;
+                btn.textContent = 'Fork';
+            }
+        }
+
+        document.getElementById('fork-name').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') doFork();
+            if (e.key === 'Escape') closeForkModal();
+        });
+
+        loadGallery();
+    </script>
+</body>
+</html>

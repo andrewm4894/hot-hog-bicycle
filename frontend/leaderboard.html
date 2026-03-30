@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaderboard - Hot Hog on a Bicycle</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="/static/posthog-init.js"></script>
+    <style>
+        .match-card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: border-color 0.2s, transform 0.15s;
+        }
+        .match-card:hover {
+            border-color: rgba(255,255,255,0.15);
+            transform: translateY(-2px);
+        }
+        .match-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .match-player {
+            font-family: var(--font-display);
+            font-size: 0.95rem;
+        }
+        .match-result {
+            font-family: var(--font-mono);
+            font-size: 0.82rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+        }
+        .match-result.human { background: rgba(34,197,94,0.15); color: var(--relish); }
+        .match-result.ai { background: rgba(220,38,38,0.15); color: var(--ketchup-bright); }
+        .match-result.tie { background: rgba(255,215,0,0.15); color: var(--mustard); }
+        .match-svgs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+        .match-svg-wrap {
+            position: relative;
+        }
+        .match-svg-wrap .match-svg-label {
+            position: absolute;
+            top: 0.4rem;
+            left: 0.4rem;
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 0.15rem 0.4rem;
+            border-radius: 3px;
+            z-index: 1;
+        }
+        .match-svg-wrap.human .match-svg-label {
+            background: rgba(34,197,94,0.85);
+            color: #fff;
+        }
+        .match-svg-wrap.ai .match-svg-label {
+            background: rgba(220,38,38,0.85);
+            color: #fff;
+        }
+        .match-svg-wrap .svg-preview {
+            min-height: 120px;
+            margin-top: 0;
+            padding: 0.5rem;
+        }
+        .match-svg-wrap .svg-preview svg {
+            max-height: 140px;
+        }
+        .match-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 0.75rem;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .match-score {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+        .match-roast {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            font-style: italic;
+            margin-top: 0.5rem;
+            line-height: 1.4;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-dim);
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container stagger">
+        <header>
+            <h1>Hot Hog<br>on a Bicycle</h1>
+            <p class="tagline">Match History</p>
+        </header>
+
+        <div class="stats-grid">
+            <div class="card stat-card">
+                <div class="stat-number winner-human" id="human-wins">-</div>
+                <div class="stat-label">Human Wins</div>
+            </div>
+            <div class="card stat-card">
+                <div class="stat-number winner-ai" id="ai-wins">-</div>
+                <div class="stat-label">AI Wins</div>
+            </div>
+            <div class="card stat-card">
+                <div class="stat-number winner-tie" id="ties">-</div>
+                <div class="stat-label">Ties</div>
+            </div>
+        </div>
+
+        <div id="matches">
+            <div class="empty-state">Loading matches...</div>
+        </div>
+
+        <nav>
+            <a href="/">Play</a>
+        </nav>
+    </div>
+
+    <script>
+        async function loadLeaderboard() {
+            const res = await fetch('/api/leaderboard');
+            const games = await res.json();
+
+            const humanWins = games.filter(g => g.winner === 'human').length;
+            const aiWins = games.filter(g => g.winner === 'ai').length;
+            const ties = games.filter(g => g.winner === 'tie').length;
+
+            document.getElementById('human-wins').textContent = humanWins;
+            document.getElementById('ai-wins').textContent = aiWins;
+            document.getElementById('ties').textContent = ties;
+
+            const container = document.getElementById('matches');
+            if (games.length === 0) {
+                container.innerHTML = '<div class="empty-state">No matches yet. Be the first to play!</div>';
+                return;
+            }
+
+            container.innerHTML = games.map(g => {
+                const resultClass = g.winner === 'human' ? 'human' : g.winner === 'ai' ? 'ai' : 'tie';
+                const resultText = g.winner === 'human' ? 'Human won' : g.winner === 'ai' ? 'AI won' : 'Tie';
+
+                return `
+                    <div class="match-card" onclick="window.location.href='/results/${g.game_id}'">
+                        <div class="match-header">
+                            <span class="match-player">${g.player_name}</span>
+                            <span class="match-result ${resultClass}">${resultText} &mdash; ${g.human_score || '?'} vs ${g.ai_score || '?'}</span>
+                        </div>
+                        <div class="match-svgs">
+                            <div class="match-svg-wrap human">
+                                <span class="match-svg-label">Human</span>
+                                <div class="svg-preview">${g.human_svg || '<span class="placeholder">-</span>'}</div>
+                            </div>
+                            <div class="match-svg-wrap ai">
+                                <span class="match-svg-label">AI</span>
+                                <div class="svg-preview">${g.ai_svg || '<span class="placeholder">-</span>'}</div>
+                            </div>
+                        </div>
+                        ${g.human_roast || g.ai_roast ? `
+                            <div class="match-roast">
+                                ${g.human_roast ? `Human: "${g.human_roast}"` : ''}
+                                ${g.human_roast && g.ai_roast ? ' &bull; ' : ''}
+                                ${g.ai_roast ? `AI: "${g.ai_roast}"` : ''}
+                            </div>
+                        ` : ''}
+                        <div class="match-meta">
+                            <span class="model-badge" style="font-size: 0.72rem;">${g.generation_model.split('/').pop()}</span>
+                            <span style="color: var(--text-dim); font-size: 0.75rem;">${g.completed_at ? new Date(g.completed_at).toLocaleString() : ''}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        loadLeaderboard();
+        setInterval(loadLeaderboard, 30000);
+    </script>
+</body>
+</html>

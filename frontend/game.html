@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Playing - Hot Hog on a Bicycle</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="/static/posthog-init.js"></script>
+</head>
+<body>
+    <div class="container stagger">
+        <header>
+            <h1>Hot Hog<br>on a Bicycle</h1>
+            <p class="tagline">See how the sausage is made.</p>
+        </header>
+
+        <div class="model-info">
+            Your model: <span class="model-badge" id="model-name">loading...</span>
+        </div>
+
+        <div class="round-indicator" id="round-dots"></div>
+
+        <div class="card">
+            <h3 id="round-title">Round 1 of 3</h3>
+            <p id="round-description" style="color: var(--text-muted); margin: 0.5rem 0 0.75rem; font-size: 0.92rem;">
+                Write a prompt to generate an SVG of a hot dog riding a bicycle.
+            </p>
+            <textarea id="prompt-input" placeholder="e.g. Draw a cute hot dog with mustard, sitting on a red bicycle, with spinning wheels..."></textarea>
+            <div class="prompt-actions">
+                <button class="btn btn-primary" id="submit-btn" onclick="submitPrompt()">
+                    Generate SVG
+                </button>
+                <button class="btn btn-secondary" id="fresh-start-btn" style="display: none;" onclick="toggleFreshStart(this)">
+                    Start Fresh
+                </button>
+                <button class="btn btn-secondary" id="final-answer-btn" style="display: none;" onclick="judgeGame()">
+                    Final Answer
+                </button>
+                <input type="hidden" id="fresh-start" value="false">
+                <span class="loading-text" id="loading" style="display: none;">
+                    <span class="spinner"></span>
+                    <span id="loading-label">Generating...</span>
+                </span>
+            </div>
+        </div>
+
+        <div class="results-grid" id="round-results">
+            <div class="card" style="border-top: 3px solid var(--relish);">
+                <h3 style="color: var(--relish); font-size: 0.9rem;">Your Result</h3>
+                <div class="svg-preview" id="svg-preview">
+                    <span class="placeholder">Your SVG will appear here</span>
+                </div>
+            </div>
+            <div class="card" id="ai-result-card" style="display: none; border-top: 3px solid var(--ketchup);">
+                <h3 style="color: var(--ketchup-bright); font-size: 0.9rem;">AI Challenger</h3>
+                <div class="svg-preview" id="ai-svg-preview">
+                    <span class="placeholder">Waiting...</span>
+                </div>
+                <p id="ai-prompt-text" style="color: var(--text-dim); font-family: var(--font-mono); font-size: 0.78rem; line-height: 1.5; margin-top: 0.5rem; border-left: 2px solid var(--border); padding-left: 0.5rem;"></p>
+            </div>
+        </div>
+
+        <div id="history"></div>
+
+        <nav>
+            <a href="/">New Game</a>
+            <a href="/gallery">Gallery</a>
+            <a href="/leaderboard">Matches</a>
+        </nav>
+    </div>
+
+    <script>
+        const gameId = window.location.pathname.split('/').pop();
+        let gameState = null;
+
+        async function loadGame() {
+            const res = await fetch(`/api/game/${gameId}`);
+            if (!res.ok) {
+                alert('Game not found');
+                window.location.href = '/';
+                return;
+            }
+            gameState = await res.json();
+            renderState();
+        }
+
+        function renderState() {
+            document.getElementById('model-name').textContent = gameState.generation_model;
+
+            const loading = document.getElementById('loading');
+            const btn = document.getElementById('submit-btn');
+            if (loading) loading.style.display = 'none';
+            if (btn) btn.disabled = false;
+            const label = document.getElementById('loading-label');
+            if (label) label.textContent = 'Generating...';
+
+            const dots = document.getElementById('round-dots');
+            dots.innerHTML = '';
+            for (let i = 1; i <= gameState.rounds_total; i++) {
+                const dot = document.createElement('div');
+                dot.className = 'round-dot';
+                if (i < gameState.current_round + 1) dot.classList.add('done');
+                if (i === gameState.current_round + 1) dot.classList.add('active');
+                dots.appendChild(dot);
+            }
+
+            const nextRound = gameState.current_round + 1;
+            document.getElementById('round-title').textContent =
+                `Round ${Math.min(nextRound, gameState.rounds_total)} of ${gameState.rounds_total}`;
+
+            const history = document.getElementById('history');
+            history.innerHTML = '';
+            if (gameState.rounds && gameState.rounds.length > 0) {
+                const latest = gameState.rounds[gameState.rounds.length - 1];
+                if (latest.svg) {
+                    document.getElementById('svg-preview').innerHTML = latest.svg;
+                }
+
+                for (let i = gameState.rounds.length - 1; i >= 0; i--) {
+                    const r = gameState.rounds[i];
+                    const div = document.createElement('div');
+                    div.className = 'card fade-in';
+                    div.innerHTML = `
+                        <h3>Round ${r.round_number}</h3>
+                        <p style="color: var(--text-dim); font-size: 0.88rem; font-family: var(--font-mono); margin: 0.5rem 0;">
+                            ${r.prompt}
+                        </p>
+                        ${r.svg ? `<div class="svg-preview">${r.svg}</div>` : '<p style="color: var(--ketchup);">No valid SVG generated</p>'}
+                    `;
+                    history.appendChild(div);
+                }
+            }
+
+            if (gameState.status === 'complete') {
+                window.location.href = `/results/${gameId}`;
+            }
+
+            // Show fresh-start and final-answer options after round 1
+            const freshBtn = document.getElementById('fresh-start-btn');
+            const finalBtn = document.getElementById('final-answer-btn');
+            if (freshBtn) freshBtn.style.display = gameState.current_round > 0 && gameState.current_round < gameState.rounds_total ? 'inline-flex' : 'none';
+            if (finalBtn) finalBtn.style.display = gameState.current_round > 0 && gameState.current_round < gameState.rounds_total ? 'inline-flex' : 'none';
+            // Reset fresh start state on new render
+            document.getElementById('fresh-start').value = 'false';
+            if (freshBtn) { freshBtn.style.borderColor = ''; freshBtn.style.color = ''; }
+
+            if (gameState.current_round >= gameState.rounds_total && gameState.status === 'playing') {
+                document.getElementById('prompt-input').disabled = true;
+                document.getElementById('submit-btn').textContent = 'Judge the Results';
+                document.getElementById('submit-btn').onclick = judgeGame;
+                if (finalBtn) finalBtn.style.display = 'none';
+                document.getElementById('round-description').textContent =
+                    'All rounds complete! Ready for the blind judge.';
+            }
+        }
+
+        function toggleFreshStart(btn) {
+            const input = document.getElementById('fresh-start');
+            const active = input.value !== 'true';
+            input.value = active ? 'true' : 'false';
+            btn.style.borderColor = active ? 'var(--mustard)' : '';
+            btn.style.color = active ? 'var(--mustard)' : '';
+        }
+
+        async function submitPrompt() {
+            const prompt = document.getElementById('prompt-input').value.trim();
+            if (!prompt) {
+                document.getElementById('prompt-input').focus();
+                return;
+            }
+
+            const btn = document.getElementById('submit-btn');
+            const loading = document.getElementById('loading');
+            btn.disabled = true;
+            loading.style.display = 'flex';
+
+            try {
+                const res = await fetch(`/api/game/${gameId}/round`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        prompt,
+                        fresh_start: document.getElementById('fresh-start')?.value === 'true',
+                        session_id: getPostHogSessionId(),
+                    }),
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || 'Round failed');
+                }
+
+                const result = await res.json();
+
+                const preview = document.getElementById('svg-preview');
+                if (result.human_svg) {
+                    preview.innerHTML = result.human_svg;
+                } else {
+                    preview.innerHTML = '<span class="placeholder" style="color: var(--ketchup);">Model failed to produce valid SVG. Try again!</span>';
+                }
+
+                // Show AI challenger's result
+                const aiCard = document.getElementById('ai-result-card');
+                const aiPreview = document.getElementById('ai-svg-preview');
+                const aiPromptText = document.getElementById('ai-prompt-text');
+                aiCard.style.display = 'block';
+
+                if (result.ai_svg) {
+                    aiPreview.innerHTML = result.ai_svg;
+                } else {
+                    aiPreview.innerHTML = '<span class="placeholder" style="color: var(--ketchup);">AI also failed!</span>';
+                }
+                if (result.ai_prompt) {
+                    aiPromptText.textContent = result.ai_prompt;
+                }
+
+                document.getElementById('prompt-input').value = '';
+                await loadGame();
+
+            } catch (err) {
+                alert('Error: ' + err.message);
+            } finally {
+                btn.disabled = false;
+                loading.style.display = 'none';
+            }
+        }
+
+        async function judgeGame() {
+            const btn = document.getElementById('submit-btn');
+            const loading = document.getElementById('loading');
+            btn.disabled = true;
+            document.getElementById('loading-label').textContent = 'Judge is deliberating...';
+            loading.style.display = 'flex';
+
+            try {
+                const res = await fetch(`/api/game/${gameId}/judge`, { method: 'POST' });
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || 'Judging failed');
+                }
+                window.location.href = `/results/${gameId}`;
+            } catch (err) {
+                alert('Error: ' + err.message);
+                btn.disabled = false;
+                loading.style.display = 'none';
+            }
+        }
+
+        document.getElementById('prompt-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                const btn = document.getElementById('submit-btn');
+                if (!btn.disabled) btn.click();
+            }
+        });
+
+        loadGame();
+    </script>
+</body>
+</html>

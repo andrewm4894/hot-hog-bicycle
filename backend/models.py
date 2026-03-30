@@ -1,0 +1,60 @@
+import datetime
+from sqlalchemy import create_engine, Column, String, Integer, Float, Text, DateTime, Boolean
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
+
+from .config import DATABASE_URL
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+class Game(Base):
+    __tablename__ = "games"
+
+    id = Column(String, primary_key=True)
+    player_name = Column(String, nullable=False)
+    generation_model = Column(String, nullable=False)
+    challenger_model = Column(String, nullable=False)
+    judge_model = Column(String, nullable=True)
+    current_round = Column(Integer, default=0)
+    human_svg_final = Column(Text, nullable=True)
+    ai_svg_final = Column(Text, nullable=True)
+    human_score = Column(Float, nullable=True)
+    ai_score = Column(Float, nullable=True)
+    human_roast = Column(Text, nullable=True)
+    ai_roast = Column(Text, nullable=True)
+    judge_details = Column(Text, nullable=True)  # JSON: full per-category scores + commentary
+    winner = Column(String, nullable=True)  # "human" | "ai" | "tie"
+    status = Column(String, default="playing")  # "playing" | "judging" | "complete"
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
+    completed_at = Column(DateTime, nullable=True)
+
+
+class Round(Base):
+    __tablename__ = "rounds"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    game_id = Column(String, nullable=False, index=True)
+    round_number = Column(Integer, nullable=False)
+    is_human = Column(Boolean, nullable=False)
+    prompt_text = Column(Text, nullable=False)
+    svg_output = Column(Text, nullable=True)
+    raw_response = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
+
+
+engine = create_engine(DATABASE_URL, echo=False)
+SessionLocal = sessionmaker(bind=engine)
+
+
+def init_db():
+    Base.metadata.create_all(engine)
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

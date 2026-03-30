@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Results - Hot Hog on a Bicycle</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="/static/posthog-init.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Hot Hog<br>on a Bicycle</h1>
+            <p class="tagline">The sausage has been judged.</p>
+        </header>
+
+        <div id="results-content">
+            <div style="text-align: center; padding: 3rem;">
+                <span class="loading-text" style="justify-content: center;">
+                    <span class="spinner"></span>
+                    Loading results...
+                </span>
+            </div>
+        </div>
+
+        <nav>
+            <a href="/">Play Again</a>
+            <a href="/gallery">Gallery</a>
+            <a href="/leaderboard">Matches</a>
+        </nav>
+    </div>
+
+    <script>
+        const gameId = window.location.pathname.split('/').pop();
+
+        async function loadResults() {
+            const res = await fetch(`/api/game/${gameId}/results`);
+            if (res.ok) {
+                const data = await res.json();
+                renderFullResults(data);
+                return;
+            }
+
+            const judgeRes = await fetch(`/api/game/${gameId}/judge`, { method: 'POST' });
+            if (judgeRes.ok) {
+                const data = await judgeRes.json();
+                renderFullResults(data);
+            } else {
+                document.getElementById('results-content').innerHTML =
+                    '<p style="text-align:center; color: var(--ketchup);">Could not load results</p>';
+            }
+        }
+
+        function renderFullResults(data) {
+            const container = document.getElementById('results-content');
+            const winnerClass = data.winner === 'human' ? 'human-wins' :
+                               data.winner === 'ai' ? 'ai-wins' : 'tie';
+            const winnerText = data.winner === 'human' ? 'YOU BEAT THE MACHINE!' :
+                              data.winner === 'ai' ? 'THE AI WINS THIS ROUND!' : "IT'S A TIE!";
+
+            container.innerHTML = `
+                <div class="reveal-banner ${winnerClass}">${winnerText}</div>
+                <p class="commentary">${data.commentary || ''}</p>
+
+                <div class="models-info">
+                    <span class="model-badge">${data.generation_model}</span>
+                    <span class="vs-text">VS</span>
+                    <span>AI using</span>
+                    <span class="model-badge">${data.challenger_model}</span>
+                </div>
+
+                <div class="results-grid">
+                    <div class="result-card ${data.winner === 'human' ? 'winner' : ''}">
+                        <h3>${data.winner === 'human' ? 'Your Hot Dog (Winner!)' : 'Your Hot Dog'}</h3>
+                        <div class="score-total">${data.human?.scores?.total || '?'}<span style="font-size:1rem;color:var(--text-dim)">/40</span></div>
+                        <div class="svg-preview">${data.human?.svg || '<span class="placeholder">No SVG</span>'}</div>
+                        ${renderScores(data.human?.scores)}
+                        <div class="roast">${data.human?.scores?.roast || ''}</div>
+                    </div>
+
+                    <div class="result-card ${data.winner === 'ai' ? 'winner' : ''}">
+                        <h3>${data.winner === 'ai' ? 'AI Challenger (Winner!)' : 'AI Challenger'}</h3>
+                        <div class="score-total">${data.ai?.scores?.total || '?'}<span style="font-size:1rem;color:var(--text-dim)">/40</span></div>
+                        <div class="svg-preview">${data.ai?.svg || '<span class="placeholder">No SVG</span>'}</div>
+                        ${renderScores(data.ai?.scores)}
+                        <div class="roast">${data.ai?.scores?.roast || ''}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderScores(scores) {
+            if (!scores) return '';
+            return `
+                <div style="margin-top: 0.75rem;">
+                    <div class="score-bar"><span class="label">Accuracy</span><span>${scores.accuracy || '?'}/10</span></div>
+                    <div class="score-bar"><span class="label">Creativity</span><span>${scores.creativity || '?'}/10</span></div>
+                    <div class="score-bar"><span class="label">Quality</span><span>${scores.quality || '?'}/10</span></div>
+                    <div class="score-bar"><span class="label">Humor</span><span>${scores.humor || '?'}/10</span></div>
+                </div>
+            `;
+        }
+
+        loadResults();
+    </script>
+</body>
+</html>
