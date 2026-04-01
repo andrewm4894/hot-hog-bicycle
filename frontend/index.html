@@ -3,17 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hot Hog on a Bicycle</title>
+    <title>Hot Hog Intelligence</title>
     <link rel="stylesheet" href="/static/style.css">
     <script src="/static/posthog-init.js"></script>
 </head>
 <body>
-    <div class="container stagger">
+    <div class="container stagger checker-band">
         <header>
-            <h1>Hot Hog<br>on a Bicycle</h1>
-            <p class="tagline">See how the sausage is made.</p>
-            <p class="powered-by">with PostHog LLM Analytics</p>
+            <div class="hero-hotdog">
+                <svg viewBox="0 0 200 180" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Back wheel -->
+                    <g transform="translate(48,138)">
+                        <circle cx="0" cy="0" r="28" fill="none" stroke="#555" stroke-width="3"/>
+                        <circle cx="0" cy="0" r="3" fill="#888"/>
+                        <line x1="0" y1="-28" x2="0" y2="28" stroke="#777" stroke-width="1.5" opacity="0.5"/>
+                        <line x1="-28" y1="0" x2="28" y2="0" stroke="#777" stroke-width="1.5" opacity="0.5"/>
+                        <line x1="-20" y1="-20" x2="20" y2="20" stroke="#777" stroke-width="1.5" opacity="0.5"/>
+                        <line x1="20" y1="-20" x2="-20" y2="20" stroke="#777" stroke-width="1.5" opacity="0.5"/>
+                        <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="3s" repeatCount="indefinite" additive="sum"/>
+                    </g>
+                    <!-- Front wheel -->
+                    <g transform="translate(152,138)">
+                        <circle cx="0" cy="0" r="28" fill="none" stroke="#555" stroke-width="3"/>
+                        <circle cx="0" cy="0" r="3" fill="#888"/>
+                        <line x1="0" y1="-28" x2="0" y2="28" stroke="#777" stroke-width="1.5" opacity="0.5"/>
+                        <line x1="-28" y1="0" x2="28" y2="0" stroke="#777" stroke-width="1.5" opacity="0.5"/>
+                        <line x1="-20" y1="-20" x2="20" y2="20" stroke="#777" stroke-width="1.5" opacity="0.5"/>
+                        <line x1="20" y1="-20" x2="-20" y2="20" stroke="#777" stroke-width="1.5" opacity="0.5"/>
+                        <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="3s" repeatCount="indefinite" additive="sum"/>
+                    </g>
+                    <!-- Frame -->
+                    <polygon points="48,138 90,95 152,138 120,95" fill="none" stroke="#D62828" stroke-width="3" stroke-linejoin="round"/>
+                    <line x1="90" y1="95" x2="90" y2="80" stroke="#D62828" stroke-width="3"/>
+                    <line x1="120" y1="95" x2="140" y2="80" stroke="#D62828" stroke-width="2.5"/>
+                    <!-- Handlebars -->
+                    <line x1="132" y1="78" x2="148" y2="82" stroke="#555" stroke-width="3" stroke-linecap="round"/>
+                    <!-- Seat -->
+                    <ellipse cx="90" cy="78" rx="10" ry="4" fill="#333"/>
+                    <!-- Hot dog body (bun) -->
+                    <ellipse cx="100" cy="58" rx="38" ry="16" fill="#E8A849" transform="rotate(-8, 100, 58)"/>
+                    <ellipse cx="100" cy="58" rx="38" ry="16" fill="none" stroke="#C4842C" stroke-width="1" transform="rotate(-8, 100, 58)"/>
+                    <!-- Sausage peeking out -->
+                    <ellipse cx="100" cy="60" rx="34" ry="10" fill="#D62828" transform="rotate(-8, 100, 60)"/>
+                    <ellipse cx="100" cy="60" rx="34" ry="10" fill="none" stroke="#991B1B" stroke-width="0.8" transform="rotate(-8, 100, 60)"/>
+                    <!-- Mustard zigzag -->
+                    <polyline points="70,56 76,52 82,58 88,52 94,58 100,52 106,58 112,52 118,58 124,52 130,56"
+                        fill="none" stroke="#F59E0B" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+                        transform="rotate(-8, 100, 55)"/>
+                    <!-- Eyes -->
+                    <circle cx="112" cy="52" r="4" fill="white" transform="rotate(-8, 100, 55)"/>
+                    <circle cx="112" cy="52" r="2.2" fill="#1A0A0A" transform="rotate(-8, 100, 55)"/>
+                    <circle cx="122" cy="50" r="3.5" fill="white" transform="rotate(-8, 100, 55)"/>
+                    <circle cx="122" cy="50" r="2" fill="#1A0A0A" transform="rotate(-8, 100, 55)"/>
+                    <!-- Smile -->
+                    <path d="M 112,58 Q 118,63 124,58" fill="none" stroke="#1A0A0A" stroke-width="1.5" stroke-linecap="round"
+                        transform="rotate(-8, 100, 55)"/>
+                    <!-- Little arms holding handlebars -->
+                    <path d="M 120,65 Q 130,75 138,80" fill="none" stroke="#E8A849" stroke-width="3" stroke-linecap="round"/>
+                    <path d="M 80,65 Q 82,75 85,80" fill="none" stroke="#E8A849" stroke-width="3" stroke-linecap="round"/>
+                    <!-- Tiny legs on pedals -->
+                    <line x1="92" y1="72" x2="88" y2="90" stroke="#E8A849" stroke-width="3" stroke-linecap="round"/>
+                    <line x1="108" y1="72" x2="110" y2="90" stroke="#E8A849" stroke-width="3" stroke-linecap="round"/>
+                </svg>
+            </div>
+
+            <h1>Hot Hog<br>Intelligence<span class="title-accent">and how the sausage is made</span></h1>
+
+            <div class="header-badges">
+                <span class="llm-stamp">LLM Analytics</span>
+            </div>
         </header>
+
+        <div class="checker-divider"></div>
 
         <div class="card" style="text-align: center;">
             <div class="hero-vs">

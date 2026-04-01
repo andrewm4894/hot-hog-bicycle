@@ -1,27 +1,37 @@
-@import url('https://fonts.googleapis.com/css2?family=Bungee&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bungee&family=Bungee+Shade&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,700;1,700&display=swap');
 
 :root {
-    --mustard: #FFD700;
-    --mustard-dim: #b8991a;
-    --ketchup: #DC2626;
-    --ketchup-bright: #ef4444;
+    --ketchup: #D62828;
+    --ketchup-bright: #EF4444;
+    --ketchup-deep: #991B1B;
+    --mustard: #F59E0B;
+    --mustard-bright: #FBBF24;
+    --mustard-dim: #B45309;
     --bun: #F5DEB3;
+    --bun-light: #FDF6E3;
     --relish: #22C55E;
-    --bg: #110e0e;
+    --relish-deep: #15803D;
+    --bg: #1A0A0A;
+    --bg-warm: #1F0F0B;
     --surface: rgba(255,255,255,0.04);
     --surface-hover: rgba(255,255,255,0.07);
+    --surface-warm: rgba(214,40,40,0.06);
     --border: rgba(255,255,255,0.08);
-    --text: #f0ece4;
-    --text-muted: #8a8379;
-    --text-dim: #5c554d;
-    --glow-mustard: 0 0 20px rgba(255,215,0,0.3), 0 0 60px rgba(255,215,0,0.1);
-    --glow-ketchup: 0 0 20px rgba(220,38,38,0.3), 0 0 60px rgba(220,38,38,0.1);
+    --border-warm: rgba(214,40,40,0.15);
+    --text: #F5EDE4;
+    --text-muted: #A8978A;
+    --text-dim: #6B5D52;
+    --glow-ketchup: 0 0 20px rgba(214,40,40,0.3), 0 0 60px rgba(214,40,40,0.1);
+    --glow-mustard: 0 0 20px rgba(245,158,11,0.3), 0 0 60px rgba(245,158,11,0.1);
     --glow-relish: 0 0 20px rgba(34,197,94,0.3);
     --font-display: 'Bungee', cursive;
+    --font-display-shade: 'Bungee Shade', cursive;
     --font-body: 'DM Sans', sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
+    --font-accent: 'Playfair Display', serif;
     --radius: 16px;
     --radius-sm: 8px;
+    --checker-size: 20px;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -44,15 +54,15 @@ body::before {
     z-index: 9999;
 }
 
-/* Warm gradient bg accent */
+/* Warm radial gradient behind header */
 body::after {
     content: '';
     position: fixed;
-    top: -40%;
+    top: -30%;
     left: -20%;
     width: 140%;
-    height: 80%;
-    background: radial-gradient(ellipse at center, rgba(255,215,0,0.04) 0%, transparent 70%);
+    height: 70%;
+    background: radial-gradient(ellipse at center, rgba(214,40,40,0.06) 0%, rgba(245,158,11,0.03) 40%, transparent 70%);
     pointer-events: none;
     z-index: -1;
 }
@@ -64,6 +74,34 @@ body::after {
     position: relative;
 }
 
+/* ========== CHECKERED PATTERN ========== */
+
+.checker-band {
+    position: relative;
+    overflow: hidden;
+}
+
+.checker-band::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        repeating-conic-gradient(
+            rgba(214,40,40,0.08) 0% 25%,
+            transparent 0% 50%
+        )
+        0 0 / var(--checker-size) var(--checker-size);
+    mask-image: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.2) 60%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.2) 60%, transparent 100%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+.checker-band > * {
+    position: relative;
+    z-index: 1;
+}
+
 /* ========== HEADER ========== */
 
 header {
@@ -73,21 +111,31 @@ header {
 
 header h1 {
     font-family: var(--font-display);
-    font-size: 2.8rem;
+    font-size: 2.6rem;
     line-height: 1.1;
-    color: var(--mustard);
-    text-shadow: var(--glow-mustard);
+    color: var(--ketchup);
+    text-shadow: var(--glow-ketchup);
     letter-spacing: 1px;
     animation: neonPulse 4s ease-in-out infinite;
 }
 
+header h1 .title-accent {
+    display: block;
+    font-family: var(--font-display);
+    font-size: 0.45em;
+    color: var(--mustard);
+    text-shadow: var(--glow-mustard);
+    letter-spacing: 3px;
+    margin-top: 0.3rem;
+}
+
 header .tagline {
-    font-family: var(--font-body);
+    font-family: var(--font-accent);
     color: var(--text-muted);
     margin-top: 0.75rem;
     font-size: 1.05rem;
     font-style: italic;
-    font-weight: 400;
+    font-weight: 700;
 }
 
 header .powered-by {
@@ -99,8 +147,29 @@ header .powered-by {
 }
 
 @keyframes neonPulse {
-    0%, 100% { text-shadow: var(--glow-mustard); }
-    50% { text-shadow: 0 0 30px rgba(255,215,0,0.5), 0 0 80px rgba(255,215,0,0.2); }
+    0%, 100% { text-shadow: var(--glow-ketchup); }
+    50% { text-shadow: 0 0 30px rgba(214,40,40,0.5), 0 0 80px rgba(214,40,40,0.2); }
+}
+
+/* ========== HERO HOT DOG SVG ========== */
+
+.hero-hotdog {
+    display: flex;
+    justify-content: center;
+    margin: 0.5rem 0 0.25rem;
+    animation: heroFloat 6s ease-in-out infinite;
+    filter: drop-shadow(0 4px 20px rgba(214,40,40,0.2));
+}
+
+.hero-hotdog svg {
+    width: 180px;
+    height: auto;
+}
+
+@keyframes heroFloat {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    25% { transform: translateY(-6px) rotate(1deg); }
+    75% { transform: translateY(2px) rotate(-0.5deg); }
 }
 
 /* ========== CARDS ========== */
@@ -177,12 +246,12 @@ header .powered-by {
 .btn-primary {
     background: var(--ketchup);
     color: #fff;
-    box-shadow: 0 4px 20px rgba(220,38,38,0.3);
+    box-shadow: 0 4px 20px rgba(214,40,40,0.3);
 }
 
 .btn-primary:hover {
     background: var(--ketchup-bright);
-    box-shadow: 0 4px 30px rgba(220,38,38,0.4);
+    box-shadow: 0 4px 30px rgba(214,40,40,0.4);
 }
 
 .btn-secondary {
@@ -207,8 +276,8 @@ input[type="text"], textarea {
 
 input[type="text"]:focus, textarea:focus {
     outline: none;
-    border-color: var(--mustard-dim);
-    box-shadow: 0 0 0 3px rgba(255,215,0,0.08);
+    border-color: var(--ketchup);
+    box-shadow: 0 0 0 3px rgba(214,40,40,0.12);
 }
 
 input[type="text"]::placeholder, textarea::placeholder {
@@ -275,9 +344,9 @@ textarea {
 }
 
 .round-dot.active {
-    background: var(--mustard);
-    border-color: var(--mustard);
-    box-shadow: var(--glow-mustard);
+    background: var(--ketchup);
+    border-color: var(--ketchup);
+    box-shadow: var(--glow-ketchup);
     animation: dotPulse 2s ease-in-out infinite;
 }
 
@@ -288,23 +357,69 @@ textarea {
 }
 
 @keyframes dotPulse {
-    0%, 100% { box-shadow: var(--glow-mustard); }
-    50% { box-shadow: 0 0 25px rgba(255,215,0,0.5); }
+    0%, 100% { box-shadow: var(--glow-ketchup); }
+    50% { box-shadow: 0 0 25px rgba(214,40,40,0.5); }
 }
 
-/* ========== MODEL BADGE ========== */
+/* ========== MODEL BADGE (TICKET STYLE) ========== */
 
 .model-badge {
     display: inline-block;
-    padding: 0.3rem 0.85rem;
-    background: rgba(255,215,0,0.08);
+    padding: 0.35rem 0.9rem;
+    background: rgba(245,158,11,0.1);
     color: var(--mustard);
-    border: 1px solid rgba(255,215,0,0.15);
-    border-radius: 999px;
+    border: 1px dashed rgba(245,158,11,0.35);
+    border-radius: 3px;
     font-size: 0.8rem;
     font-family: var(--font-mono);
     font-weight: 500;
     letter-spacing: 0.3px;
+    position: relative;
+    text-transform: uppercase;
+}
+
+/* Ticket notch effect */
+.model-badge::before,
+.model-badge::after {
+    content: '';
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: var(--bg);
+    border-radius: 50%;
+    top: 50%;
+    transform: translateY(-50%);
+    border: 1px dashed rgba(245,158,11,0.35);
+}
+
+.model-badge::before { left: -5px; }
+.model-badge::after { right: -5px; }
+
+/* ========== LLM ANALYTICS STAMP ========== */
+
+.llm-stamp {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.25rem 0.7rem;
+    border: 2px solid var(--ketchup);
+    border-radius: 3px;
+    font-family: var(--font-display);
+    font-size: 0.55rem;
+    color: var(--ketchup);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    transform: rotate(-2deg);
+    opacity: 0.7;
+    position: relative;
+}
+
+.llm-stamp::after {
+    content: 'POSTHOG';
+    font-family: var(--font-mono);
+    font-size: 0.5rem;
+    letter-spacing: 1px;
+    opacity: 0.6;
 }
 
 /* ========== MODEL INFO ========== */
@@ -337,7 +452,7 @@ textarea {
 
 @media (max-width: 640px) {
     .results-grid { grid-template-columns: 1fr; }
-    header h1 { font-size: 2rem; }
+    header h1 { font-size: 1.8rem; }
 }
 
 .result-card {
@@ -368,6 +483,22 @@ textarea {
     font-size: 1.4rem;
     letter-spacing: 1px;
     animation: bannerReveal 0.6s ease-out;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Checkered celebration pattern on banners */
+.reveal-banner::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        repeating-conic-gradient(
+            rgba(255,255,255,0.04) 0% 25%,
+            transparent 0% 50%
+        )
+        0 0 / 16px 16px;
+    pointer-events: none;
 }
 
 .reveal-banner.human-wins {
@@ -378,14 +509,14 @@ textarea {
 }
 
 .reveal-banner.ai-wins {
-    background: linear-gradient(135deg, rgba(220,38,38,0.15), rgba(220,38,38,0.03));
+    background: linear-gradient(135deg, rgba(214,40,40,0.15), rgba(214,40,40,0.03));
     border: 2px solid var(--ketchup);
     color: var(--ketchup-bright);
     text-shadow: var(--glow-ketchup);
 }
 
 .reveal-banner.tie {
-    background: linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,215,0,0.03));
+    background: linear-gradient(135deg, rgba(245,158,11,0.15), rgba(245,158,11,0.03));
     border: 2px solid var(--mustard);
     color: var(--mustard);
     text-shadow: var(--glow-mustard);
@@ -435,7 +566,7 @@ textarea {
     font-size: 0.88rem;
     color: var(--text-muted);
     line-height: 1.5;
-    border-left: 3px solid var(--mustard-dim);
+    border-left: 3px solid var(--ketchup);
 }
 
 /* ========== LEADERBOARD ========== */
@@ -482,7 +613,7 @@ textarea {
 }
 
 .leaderboard-table th {
-    color: var(--mustard-dim);
+    color: var(--ketchup);
     font-family: var(--font-mono);
     font-size: 0.72rem;
     text-transform: uppercase;
@@ -513,7 +644,7 @@ textarea {
     width: 18px;
     height: 18px;
     border: 2px solid rgba(255,255,255,0.15);
-    border-top-color: var(--mustard);
+    border-top-color: var(--ketchup);
     border-radius: 50%;
     animation: spin 0.7s linear infinite;
 }
@@ -550,8 +681,8 @@ nav a {
 }
 
 nav a:hover {
-    color: var(--mustard);
-    border-bottom-color: var(--mustard-dim);
+    color: var(--ketchup);
+    border-bottom-color: var(--ketchup);
 }
 
 /* ========== LANDING PAGE ========== */
@@ -606,6 +737,8 @@ nav a:hover {
 .stagger > *:nth-child(3) { animation-delay: 0.15s; }
 .stagger > *:nth-child(4) { animation-delay: 0.2s; }
 .stagger > *:nth-child(5) { animation-delay: 0.25s; }
+.stagger > *:nth-child(6) { animation-delay: 0.3s; }
+.stagger > *:nth-child(7) { animation-delay: 0.35s; }
 
 /* ========== VS DIVIDER ========== */
 
@@ -625,4 +758,60 @@ nav a:hover {
     font-family: var(--font-display);
     color: var(--ketchup);
     font-size: 0.75rem;
+}
+
+/* ========== CHECKERED DIVIDER ========== */
+
+.checker-divider {
+    height: 6px;
+    background:
+        repeating-conic-gradient(
+            var(--ketchup) 0% 25%,
+            transparent 0% 50%
+        )
+        0 0 / 6px 6px;
+    opacity: 0.3;
+    margin: 0.5rem 0;
+    border-radius: 1px;
+}
+
+/* ========== HEADER BADGE ROW ========== */
+
+.header-badges {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 0.75rem;
+    flex-wrap: wrap;
+}
+
+/* ========== BICYCLE WHEEL SPINNER (loading alternative) ========== */
+
+@keyframes wheelSpin {
+    to { transform: rotate(360deg); }
+}
+
+.wheel-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(214,40,40,0.2);
+    border-top-color: var(--ketchup);
+    border-right-color: var(--ketchup);
+    border-radius: 50%;
+    animation: wheelSpin 0.6s linear infinite;
+    position: relative;
+}
+
+.wheel-spinner::after {
+    content: '';
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    background: var(--ketchup);
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
 }
