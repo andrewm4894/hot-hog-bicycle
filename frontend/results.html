@@ -6,11 +6,12 @@
     <title>Results - Hot Hog Intelligence</title>
     <link rel="stylesheet" href="/static/style.css">
     <script src="/static/posthog-init.js"></script>
+    <script src="/static/svg-code.js"></script>
 </head>
 <body>
     <div class="container checker-band">
         <header>
-            <h1>Hot Hog<br>Intelligence<span class="title-accent">the sausage has been judged</span></h1>
+            <h1><a href="/" class="home-link">Hot Hog<br>Intelligence<span class="title-accent">the sausage has been judged</span></a></h1>
         </header>
 
         <div class="checker-divider"></div>
@@ -25,7 +26,7 @@
         </div>
 
         <nav>
-            <a href="/">Play Again</a>
+            <a href="/">Home</a>
             <a href="/gallery">Gallery</a>
             <a href="/leaderboard">Matches</a>
         </nav>
@@ -88,6 +89,7 @@
                     </div>
                 </div>
             `;
+            setTimeout(addCodeButtons, 0);
         }
 
         function renderScores(scores) {

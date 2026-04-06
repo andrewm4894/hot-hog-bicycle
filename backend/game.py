@@ -55,7 +55,7 @@ def create_game(player_name: str, session_id: str | None = None) -> dict:
     }
 
 
-def play_human_round(game_id: str, prompt: str, fresh_start: bool = False, session_id: str | None = None) -> dict:
+def play_human_round(game_id: str, prompt: str, fresh_start: bool = False, session_id: str | None = None, model_override: str | None = None) -> dict:
     """
     Handle one human round:
     1. Generate SVG from the human's prompt
@@ -104,6 +104,9 @@ def play_human_round(game_id: str, prompt: str, fresh_start: bool = False, sessi
         ]
 
         # Capture values before threading (avoid lazy-load issues)
+        if model_override and model_override in GENERATION_MODELS:
+            game.generation_model = model_override
+            db.commit()
         gen_model = game.generation_model
         chal_model = game.challenger_model
         player_name = game.player_name
@@ -359,9 +362,15 @@ def get_game_state(game_id: str) -> dict | None:
         if not game:
             return None
 
-        rounds = (
+        human_rounds = (
             db.query(Round)
             .filter(Round.game_id == game_id, Round.is_human == True)
+            .order_by(Round.round_number)
+            .all()
+        )
+        ai_rounds = (
+            db.query(Round)
+            .filter(Round.game_id == game_id, Round.is_human == False)
             .order_by(Round.round_number)
             .all()
         )
@@ -379,7 +388,15 @@ def get_game_state(game_id: str) -> dict | None:
                     "prompt": r.prompt_text,
                     "svg": r.svg_output,
                 }
-                for r in rounds
+                for r in human_rounds
+            ],
+            "ai_rounds": [
+                {
+                    "round_number": r.round_number,
+                    "prompt": r.prompt_text,
+                    "svg": r.svg_output,
+                }
+                for r in ai_rounds
             ],
         }
     finally:

@@ -6,6 +6,7 @@
     <title>Leaderboard - Hot Hog Intelligence</title>
     <link rel="stylesheet" href="/static/style.css">
     <script src="/static/posthog-init.js"></script>
+    <script src="/static/svg-code.js"></script>
     <style>
         .match-card {
             background: var(--surface);
@@ -108,7 +109,7 @@
 <body>
     <div class="container stagger checker-band">
         <header>
-            <h1>Hot Hog<br>Intelligence<span class="title-accent">Match History</span></h1>
+            <h1><a href="/" class="home-link">Hot Hog<br>Intelligence<span class="title-accent">Match History</span></a></h1>
         </header>
 
         <div class="stats-grid">
@@ -131,7 +132,9 @@
         </div>
 
         <nav>
-            <a href="/">Play</a>
+            <a href="/">Home</a>
+            <a href="/gallery">Gallery</a>
+            <a href="/leaderboard">Matches</a>
         </nav>
     </div>
 
@@ -188,6 +191,7 @@
                     </div>
                 `;
             }).join('');
+            addCodeButtons();
         }
 
         loadLeaderboard();

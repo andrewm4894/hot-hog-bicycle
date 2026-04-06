@@ -11,7 +11,16 @@ POSTHOG_HOST = os.getenv("POSTHOG_HOST", "https://us.i.posthog.com")
 POSTHOG_APP_HOST = os.getenv("POSTHOG_APP_HOST", "https://us.posthog.com")
 POSTHOG_PERSONAL_API_KEY = os.getenv("POSTHOG_PERSONAL_API_KEY", "")
 
-JUDGE_MODEL = os.getenv("JUDGE_MODEL", "anthropic/claude-sonnet-4")
+JUDGE_MODEL = os.getenv("JUDGE_MODEL", "")  # If empty, randomly chosen from JUDGE_MODELS
+
+JUDGE_MODELS = [
+    "anthropic/claude-sonnet-4.6",
+    "anthropic/claude-sonnet-4",
+    "openai/gpt-5",
+    "openai/gpt-4.1",
+    "google/gemini-2.5-pro",
+    "google/gemini-3.1-pro-preview",
+]
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./hot_hog.db")
 # Railway uses ephemeral filesystem — SQLite is fine for a conference demo.
@@ -22,48 +31,58 @@ DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./hot_hog.db")
 # Verified against OpenRouter /api/v1/models as of 2026-03-30.
 GENERATION_MODELS = [
     # Anthropic
+    "anthropic/claude-sonnet-4.6",
     "anthropic/claude-sonnet-4",
-    "anthropic/claude-sonnet-4.5",
     "anthropic/claude-haiku-4.5",
+    "anthropic/claude-opus-4.5",
     # OpenAI
-    "openai/gpt-4o",
-    "openai/gpt-4o-mini",
+    "openai/gpt-5",
+    "openai/gpt-5.4",
+    "openai/gpt-5.4-mini",
     "openai/gpt-4.1",
     "openai/gpt-4.1-mini",
-    "openai/gpt-5",
+    "openai/gpt-4o",
     "openai/o4-mini",
     # Google
-    "google/gemini-2.5-flash",
-    "google/gemini-2.5-pro",
-    "google/gemini-2.0-flash-001",
+    "google/gemini-3.1-pro-preview",
     "google/gemini-3-flash-preview",
+    "google/gemini-2.5-pro",
+    "google/gemini-2.5-flash",
+    "google/gemma-4-31b-it",
     # Meta
     "meta-llama/llama-4-maverick",
     "meta-llama/llama-4-scout",
     # DeepSeek
-    "deepseek/deepseek-chat-v3-0324",
     "deepseek/deepseek-v3.2",
+    "deepseek/deepseek-chat-v3-0324",
     # Mistral
     "mistralai/mistral-large-2512",
     "mistralai/mistral-small-2603",
     # Qwen
+    "qwen/qwen3.5-122b-a10b",
+    "qwen/qwen3.5-27b",
     "qwen/qwen3-235b-a22b",
-    "qwen/qwen3-32b",
     # xAI
+    "x-ai/grok-4.20",
     "x-ai/grok-3-mini",
     # Amazon
+    "amazon/nova-premier-v1",
     "amazon/nova-pro-v1",
+    # Z-AI (GLM)
+    "z-ai/glm-5",
+    "z-ai/glm-4.7",
 ]
 
 # Capable models used as the AI challenger's "brain" — it uses this model
 # to craft prompts that get sent to the generation model.
 CHALLENGER_MODELS = [
+    "anthropic/claude-sonnet-4.6",
     "anthropic/claude-sonnet-4",
-    "openai/gpt-4o",
+    "openai/gpt-5",
     "openai/gpt-4.1-mini",
     "google/gemini-2.5-flash",
-    "google/gemini-2.0-flash-001",
-    "deepseek/deepseek-chat-v3-0324",
+    "google/gemini-3-flash-preview",
+    "deepseek/deepseek-v3.2",
     "x-ai/grok-3-mini",
 ]
 

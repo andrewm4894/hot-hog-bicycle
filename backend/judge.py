@@ -1,6 +1,7 @@
 import json
+import random
 
-from .config import JUDGE_MODEL
+from .config import JUDGE_MODEL, JUDGE_MODELS
 from .openrouter import chat_completion
 from .posthog_setup import prompts
 
@@ -52,14 +53,16 @@ def judge_game(
         },
     ]
 
+    judge_model = JUDGE_MODEL if JUDGE_MODEL else random.choice(JUDGE_MODELS)
+
     raw = chat_completion(
-        model=JUDGE_MODEL,
+        model=judge_model,
         messages=messages,
         trace_id=trace_id,
         distinct_id=distinct_id,
         span_name="judge_scoring",
         prompt_name="hot-hog-judge",
-        properties={"judge_model": JUDGE_MODEL},
+        properties={"judge_model": judge_model},
     )
 
     # Extract JSON from the response (handle markdown code blocks)

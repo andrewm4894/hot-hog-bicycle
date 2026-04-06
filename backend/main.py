@@ -6,6 +6,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from .models import init_db
+from .config import GENERATION_MODELS
 from .game import create_game, create_game_from_fork, play_human_round, judge_and_reveal, get_leaderboard, get_game_state, get_results, get_gallery
 
 
@@ -29,6 +30,7 @@ class PlayRoundRequest(BaseModel):
     prompt: str
     fresh_start: bool = False
     session_id: str | None = None
+    model: str | None = None
 
 
 class ForkGameRequest(BaseModel):
@@ -56,7 +58,7 @@ def api_get_game(game_id: str):
 @app.post("/api/game/{game_id}/round")
 def api_play_round(game_id: str, req: PlayRoundRequest):
     try:
-        result = play_human_round(game_id, req.prompt, fresh_start=req.fresh_start, session_id=req.session_id)
+        result = play_human_round(game_id, req.prompt, fresh_start=req.fresh_start, session_id=req.session_id, model_override=req.model)
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -96,6 +98,11 @@ def api_fork_game(req: ForkGameRequest):
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/api/models")
+def api_models():
+    return GENERATION_MODELS
 
 
 # --- Static frontend ---

@@ -6,15 +6,18 @@
     <title>Playing - Hot Hog Intelligence</title>
     <link rel="stylesheet" href="/static/style.css">
     <script src="/static/posthog-init.js"></script>
+    <script src="/static/svg-code.js"></script>
 </head>
 <body>
     <div class="container stagger checker-band">
         <header>
-            <h1>Hot Hog<br>Intelligence<span class="title-accent">and how the sausage is made</span></h1>
+            <h1><a href="/" class="home-link">Hot Hog<br>Intelligence<span class="title-accent">and how the sausage is made</span></a></h1>
         </header>
 
         <div class="model-info">
-            Your model: <span class="model-badge" id="model-name">loading...</span>
+            Your model: <select class="model-badge" id="model-select" style="cursor: pointer; background: var(--bg-card); color: var(--mustard); border: 1px solid var(--mustard); border-radius: 4px; padding: 0.2rem 0.4rem; font-family: var(--font-mono); font-size: 0.82rem;">
+                <option>loading...</option>
+            </select>
         </div>
 
         <div class="round-indicator" id="round-dots"></div>
@@ -43,26 +46,31 @@
             </div>
         </div>
 
-        <div class="results-grid" id="round-results">
+        <div id="round-results" style="margin: 1.5rem 0;">
             <div class="card" style="border-top: 3px solid var(--relish);">
                 <h3 style="color: var(--relish); font-size: 0.9rem;">Your Result</h3>
-                <div class="svg-preview" id="svg-preview">
+                <div class="svg-preview svg-preview--hero" id="svg-preview">
                     <span class="placeholder">Your SVG will appear here</span>
                 </div>
+                <details class="convo-history" id="human-history">
+                    <summary>Show prompt history</summary>
+                    <div class="convo-history-list" id="human-history-list"></div>
+                </details>
             </div>
-            <div class="card" id="ai-result-card" style="display: none; border-top: 3px solid var(--ketchup);">
+            <div class="card" id="ai-result-card" style="display: none; border-top: 3px solid var(--ketchup); margin-top: 1.25rem;">
                 <h3 style="color: var(--ketchup-bright); font-size: 0.9rem;">AI Challenger</h3>
                 <div class="svg-preview" id="ai-svg-preview">
                     <span class="placeholder">Waiting...</span>
                 </div>
-                <p id="ai-prompt-text" style="color: var(--text-dim); font-family: var(--font-mono); font-size: 0.78rem; line-height: 1.5; margin-top: 0.5rem; border-left: 2px solid var(--border); padding-left: 0.5rem;"></p>
+                <details class="convo-history" id="ai-history">
+                    <summary>Show prompt history</summary>
+                    <div class="convo-history-list" id="ai-history-list"></div>
+                </details>
             </div>
         </div>
 
-        <div id="history"></div>
-
         <nav>
-            <a href="/">New Game</a>
+            <a href="/">Home</a>
             <a href="/gallery">Gallery</a>
             <a href="/leaderboard">Matches</a>
         </nav>
@@ -71,6 +79,25 @@
     <script>
         const gameId = window.location.pathname.split('/').pop();
         let gameState = null;
+        let allModels = [];
+
+        async function loadModels() {
+            try {
+                const res = await fetch('/api/models');
+                if (res.ok) allModels = await res.json();
+            } catch (e) { /* use whatever the game has */ }
+        }
+
+        function populateModelSelect() {
+            const select = document.getElementById('model-select');
+            if (!allModels.length) {
+                select.innerHTML = `<option value="${gameState.generation_model}">${gameState.generation_model}</option>`;
+                return;
+            }
+            select.innerHTML = allModels.map(m =>
+                `<option value="${m}" ${m === gameState.generation_model ? 'selected' : ''}>${m}</option>`
+            ).join('');
+        }
 
         async function loadGame() {
             const res = await fetch(`/api/game/${gameId}`);
@@ -80,11 +107,29 @@
                 return;
             }
             gameState = await res.json();
+            if (!allModels.length) await loadModels();
+            populateModelSelect();
             renderState();
+            addCodeButtons();
+        }
+
+        function renderHistory(containerId, rounds) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            for (const r of rounds) {
+                const entry = document.createElement('div');
+                entry.className = 'convo-entry';
+                entry.innerHTML = `
+                    <div class="convo-round-label">Round ${r.round_number}</div>
+                    <div class="convo-prompt">${r.prompt}</div>
+                    ${r.svg ? `<div class="convo-thumb">${r.svg}</div>` : '<div class="convo-no-svg">No valid SVG</div>'}
+                `;
+                container.appendChild(entry);
+            }
         }
 
         function renderState() {
-            document.getElementById('model-name').textContent = gameState.generation_model;
+            document.getElementById('model-select').value = gameState.generation_model;
 
             const loading = document.getElementById('loading');
             const btn = document.getElementById('submit-btn');
@@ -107,27 +152,33 @@
             document.getElementById('round-title').textContent =
                 `Round ${Math.min(nextRound, gameState.rounds_total)} of ${gameState.rounds_total}`;
 
-            const history = document.getElementById('history');
-            history.innerHTML = '';
+            const humanHistory = document.getElementById('human-history');
             if (gameState.rounds && gameState.rounds.length > 0) {
                 const latest = gameState.rounds[gameState.rounds.length - 1];
                 if (latest.svg) {
                     document.getElementById('svg-preview').innerHTML = latest.svg;
                 }
+                humanHistory.querySelector('summary').textContent =
+                    `Prompt history (${gameState.rounds.length} ${gameState.rounds.length === 1 ? 'round' : 'rounds'})`;
+                renderHistory('human-history-list', gameState.rounds);
+                humanHistory.style.display = '';
+            } else {
+                humanHistory.style.display = 'none';
+            }
 
-                for (let i = gameState.rounds.length - 1; i >= 0; i--) {
-                    const r = gameState.rounds[i];
-                    const div = document.createElement('div');
-                    div.className = 'card fade-in';
-                    div.innerHTML = `
-                        <h3>Round ${r.round_number}</h3>
-                        <p style="color: var(--text-dim); font-size: 0.88rem; font-family: var(--font-mono); margin: 0.5rem 0;">
-                            ${r.prompt}
-                        </p>
-                        ${r.svg ? `<div class="svg-preview">${r.svg}</div>` : '<p style="color: var(--ketchup);">No valid SVG generated</p>'}
-                    `;
-                    history.appendChild(div);
+            // Show AI card and history if we have AI rounds
+            const aiRounds = gameState.ai_rounds || [];
+            const aiHistory = document.getElementById('ai-history');
+            if (aiRounds.length > 0) {
+                const aiCard = document.getElementById('ai-result-card');
+                aiCard.style.display = 'block';
+                const latestAi = aiRounds[aiRounds.length - 1];
+                if (latestAi.svg) {
+                    document.getElementById('ai-svg-preview').innerHTML = latestAi.svg;
                 }
+                aiHistory.querySelector('summary').textContent =
+                    `Prompt history (${aiRounds.length} ${aiRounds.length === 1 ? 'round' : 'rounds'})`;
+                renderHistory('ai-history-list', aiRounds);
             }
 
             if (gameState.status === 'complete') {
@@ -181,6 +232,7 @@
                         prompt,
                         fresh_start: document.getElementById('fresh-start')?.value === 'true',
                         session_id: getPostHogSessionId(),
+                        model: document.getElementById('model-select').value,
                     }),
                 });
 
@@ -201,16 +253,12 @@
                 // Show AI challenger's result
                 const aiCard = document.getElementById('ai-result-card');
                 const aiPreview = document.getElementById('ai-svg-preview');
-                const aiPromptText = document.getElementById('ai-prompt-text');
                 aiCard.style.display = 'block';
 
                 if (result.ai_svg) {
                     aiPreview.innerHTML = result.ai_svg;
                 } else {
                     aiPreview.innerHTML = '<span class="placeholder" style="color: var(--ketchup);">AI also failed!</span>';
-                }
-                if (result.ai_prompt) {
-                    aiPromptText.textContent = result.ai_prompt;
                 }
 
                 document.getElementById('prompt-input').value = '';
