@@ -1,4 +1,4 @@
-.PHONY: install run dev test clean sync
+.PHONY: install run dev test clean sync deploy
 
 install:
 	uv sync
@@ -14,6 +14,9 @@ dev:
 
 test:
 	uv run pytest tests/ -v
+
+deploy:
+	railway up
 
 clean:
 	rm -rf .venv __pycache__ *.db
