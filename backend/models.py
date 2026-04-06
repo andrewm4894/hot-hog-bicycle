@@ -18,6 +18,7 @@ class Game(Base):
     challenger_model = Column(String, nullable=False)
     judge_model = Column(String, nullable=True)
     current_round = Column(Integer, default=0)
+    rounds_total = Column(Integer, nullable=True)  # NULL = use ROUNDS_PER_GAME default
     human_svg_final = Column(Text, nullable=True)
     ai_svg_final = Column(Text, nullable=True)
     human_score = Column(Float, nullable=True)

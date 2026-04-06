@@ -68,8 +68,9 @@ def play_human_round(game_id: str, prompt: str, fresh_start: bool = False, sessi
         if not game:
             raise ValueError(f"Game {game_id} not found")
 
+        total_rounds = game.rounds_total or ROUNDS_PER_GAME
         round_number = game.current_round + 1
-        if round_number > ROUNDS_PER_GAME:
+        if round_number > total_rounds:
             raise ValueError("All rounds already played")
 
         trace_id = game_id
@@ -166,7 +167,7 @@ def play_human_round(game_id: str, prompt: str, fresh_start: bool = False, sessi
 
         # Update game state
         game.current_round = round_number
-        if round_number == ROUNDS_PER_GAME:
+        if round_number == total_rounds:
             game.human_svg_final = human_svg
             game.ai_svg_final = ai_result["svg"]
 
@@ -187,11 +188,11 @@ def play_human_round(game_id: str, prompt: str, fresh_start: bool = False, sessi
             properties=round_event_props,
         )
 
-        is_final = round_number == ROUNDS_PER_GAME
+        is_final = round_number == total_rounds
 
         return {
             "round_number": round_number,
-            "rounds_total": ROUNDS_PER_GAME,
+            "rounds_total": total_rounds,
             "human_svg": human_svg,
             "ai_prompt": ai_result["prompt"],
             "ai_svg": ai_result["svg"],
@@ -284,7 +285,7 @@ def judge_and_reveal(game_id: str) -> dict:
             "commentary": result.get("commentary", ""),
         })
         game.winner = winner
-        game.judge_model = game.judge_model or "anthropic/claude-sonnet-4"
+        game.judge_model = result.get("judge_model", "unknown")
         game.status = "complete"
         game.completed_at = datetime.datetime.now(datetime.timezone.utc)
         db.commit()
@@ -317,6 +318,7 @@ def judge_and_reveal(game_id: str) -> dict:
             "commentary": result.get("commentary", ""),
             "generation_model": game.generation_model,
             "challenger_model": game.challenger_model,
+            "judge_model": game.judge_model,
         }
     finally:
         db.close()
@@ -380,7 +382,7 @@ def get_game_state(game_id: str) -> dict | None:
             "player_name": game.player_name,
             "generation_model": game.generation_model,
             "current_round": game.current_round,
-            "rounds_total": ROUNDS_PER_GAME,
+            "rounds_total": game.rounds_total or ROUNDS_PER_GAME,
             "status": game.status,
             "rounds": [
                 {
@@ -462,15 +464,18 @@ def create_game_from_fork(player_name: str, fork_round_id: int, session_id: str 
         )
 
         # Create new game with same generation model
+        # Forked games get ROUNDS_PER_GAME extra rounds from the fork point
         game_id = uuid.uuid4().hex[:12]
         challenger_model = random.choice(CHALLENGER_MODELS)
+        forked_rounds = len(history_rounds)
 
         game = Game(
             id=game_id,
             player_name=player_name,
             generation_model=source_game.generation_model,
             challenger_model=challenger_model,
-            current_round=len(history_rounds),
+            current_round=forked_rounds,
+            rounds_total=forked_rounds + ROUNDS_PER_GAME,
         )
         db.add(game)
 
@@ -520,8 +525,8 @@ def create_game_from_fork(player_name: str, fork_round_id: int, session_id: str 
             "game_id": game_id,
             "generation_model": source_game.generation_model,
             "challenger_model": challenger_model,
-            "rounds_total": ROUNDS_PER_GAME,
-            "current_round": len(history_rounds),
+            "rounds_total": forked_rounds + ROUNDS_PER_GAME,
+            "current_round": forked_rounds,
             "forked_from": fork_round.game_id,
         }
     finally:
@@ -560,6 +565,7 @@ def get_results(game_id: str) -> dict | None:
             "commentary": details.get("commentary", ""),
             "generation_model": game.generation_model,
             "challenger_model": game.challenger_model,
+            "judge_model": game.judge_model,
         }
     finally:
         db.close()

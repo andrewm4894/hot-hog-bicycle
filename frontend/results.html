@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Results - Hot Hog Intelligence</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="stylesheet" href="/static/style.css">
     <script src="/static/posthog-init.js"></script>
     <script src="/static/svg-code.js"></script>
@@ -65,10 +66,10 @@
                 <p class="commentary">${data.commentary || ''}</p>
 
                 <div class="models-info">
+                    <span style="color: var(--text-muted); font-size: 0.85rem;">Both used</span>
                     <span class="model-badge">${data.generation_model}</span>
-                    <span class="vs-text">VS</span>
-                    <span>AI using</span>
-                    <span class="model-badge">${data.challenger_model}</span>
+                    <span style="color: var(--text-dim); font-size: 0.8rem; font-family: var(--font-mono);">AI prompted by ${data.challenger_model.split('/').pop()}</span>
+                    <span style="color: var(--text-dim); font-size: 0.8rem; font-family: var(--font-mono);">Judged by ${(data.judge_model || 'unknown').split('/').pop()}</span>
                 </div>
 
                 <div class="results-grid">

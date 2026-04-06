@@ -73,19 +73,23 @@ def judge_game(
         cleaned = "\n".join(lines)
 
     try:
-        return json.loads(cleaned)
+        parsed = json.loads(cleaned)
     except json.JSONDecodeError:
         start = raw.find("{")
         end = raw.rfind("}") + 1
         if start >= 0 and end > start:
             try:
-                return json.loads(raw[start:end])
+                parsed = json.loads(raw[start:end])
             except json.JSONDecodeError:
-                pass
+                parsed = None
 
-        return {
-            "svg_a": {"accuracy": 5, "creativity": 5, "quality": 5, "humor": 5, "total": 20, "roast": "The judge was speechless."},
-            "svg_b": {"accuracy": 5, "creativity": 5, "quality": 5, "humor": 5, "total": 20, "roast": "The judge was equally speechless."},
-            "winner": "tie",
-            "commentary": "The judge had a hot dog and forgot to judge properly.",
-        }
+        if not parsed:
+            parsed = {
+                "svg_a": {"accuracy": 5, "creativity": 5, "quality": 5, "humor": 5, "total": 20, "roast": "The judge was speechless."},
+                "svg_b": {"accuracy": 5, "creativity": 5, "quality": 5, "humor": 5, "total": 20, "roast": "The judge was equally speechless."},
+                "winner": "tie",
+                "commentary": "The judge had a hot dog and forgot to judge properly.",
+            }
+
+    parsed["judge_model"] = judge_model
+    return parsed

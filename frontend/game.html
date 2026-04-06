@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Playing - Hot Hog Intelligence</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="stylesheet" href="/static/style.css">
     <script src="/static/posthog-init.js"></script>
     <script src="/static/svg-code.js"></script>
@@ -14,8 +15,9 @@
             <h1><a href="/" class="home-link">Hot Hog<br>Intelligence<span class="title-accent">and how the sausage is made</span></a></h1>
         </header>
 
-        <div class="model-info">
-            Your model: <select class="model-badge" id="model-select" style="cursor: pointer; background: var(--bg-card); color: var(--mustard); border: 1px solid var(--mustard); border-radius: 4px; padding: 0.2rem 0.4rem; font-family: var(--font-mono); font-size: 0.82rem;">
+        <div class="model-selector">
+            <label for="model-select">Your model</label>
+            <select class="model-select" id="model-select">
                 <option>loading...</option>
             </select>
         </div>
