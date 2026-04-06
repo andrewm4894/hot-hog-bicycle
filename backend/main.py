@@ -1,6 +1,8 @@
+import hmac
+import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -103,6 +105,20 @@ def api_fork_game(req: ForkGameRequest):
 @app.get("/api/models")
 def api_models():
     return GENERATION_MODELS
+
+
+@app.post("/api/autoplay")
+def api_autoplay(authorization: str = Header(None)):
+    """Trigger an auto-played game. Protected by Bearer token."""
+    secret = os.getenv("AUTOPLAY_SECRET", "")
+    if not secret:
+        raise HTTPException(status_code=404, detail="Not found")
+    expected = f"Bearer {secret}"
+    if not authorization or not hmac.compare_digest(authorization, expected):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    from .autoplay import play_auto_game
+    play_auto_game()
+    return {"status": "ok"}
 
 
 # --- Static frontend ---

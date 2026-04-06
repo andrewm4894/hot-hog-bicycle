@@ -1,4 +1,4 @@
-.PHONY: install run dev test clean sync deploy
+.PHONY: install run dev test clean sync deploy autoplay
 
 install:
 	uv sync
@@ -17,6 +17,9 @@ test:
 
 deploy:
 	railway up
+
+autoplay:
+	uv run python -m backend.autoplay
 
 clean:
 	rm -rf .venv __pycache__ *.db
