@@ -1,6 +1,9 @@
 import datetime
-from sqlalchemy import create_engine, Column, String, Integer, Float, Text, DateTime, Boolean
+import logging
+from sqlalchemy import create_engine, Column, String, Integer, Float, Text, DateTime, Boolean, inspect, text
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
+
+log = logging.getLogger("hot-hog")
 
 from .config import DATABASE_URL
 
@@ -51,6 +54,13 @@ SessionLocal = sessionmaker(bind=engine)
 
 def init_db():
     Base.metadata.create_all(engine)
+    # Auto-migrate: add columns that may not exist in older databases
+    inspector = inspect(engine)
+    game_columns = {c["name"] for c in inspector.get_columns("games")}
+    with engine.begin() as conn:
+        if "rounds_total" not in game_columns:
+            log.info("Migrating: adding rounds_total column to games")
+            conn.execute(text("ALTER TABLE games ADD COLUMN rounds_total INTEGER"))
 
 
 def get_db():
