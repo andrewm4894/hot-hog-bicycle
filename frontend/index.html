@@ -56,10 +56,22 @@
             </div>
         </div>
 
+        <div class="card home-gallery-card">
+            <h2>Fresh from the grill</h2>
+            <p class="card-description">A quick taste of recent rounds from players and the AI challenger.</p>
+            <div class="home-gallery-grid" id="home-gallery-grid">
+                <p class="home-gallery-loading">Loading recent SVGs...</p>
+            </div>
+            <div class="home-gallery-actions">
+                <a href="/gallery" class="btn btn-secondary">See full gallery</a>
+            </div>
+        </div>
+
         <nav>
             <a href="/">Home</a>
             <a href="/gallery">Gallery</a>
             <a href="/leaderboard">Matches</a>
+            <a href="https://posthog.com/docs/llm-analytics" target="_blank" rel="noopener noreferrer" class="nav-docs-link">LLM Analytics Docs ↗</a>
         </nav>
     </div>
 
@@ -90,9 +102,44 @@
             }
         }
 
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        async function loadHomeGallery() {
+            const grid = document.getElementById('home-gallery-grid');
+            try {
+                const res = await fetch('/api/gallery');
+                const items = await res.json();
+                const previewItems = items.slice(0, 6);
+
+                if (previewItems.length === 0) {
+                    grid.innerHTML = '<p class="home-gallery-empty">No SVGs yet — be the first to play.</p>';
+                    return;
+                }
+
+                grid.innerHTML = previewItems.map(item => `
+                    <article class="home-gallery-item">
+                        <div class="svg-preview">${item.svg}</div>
+                        <div class="home-gallery-meta">
+                            <span class="home-gallery-author ${item.is_human ? 'human' : 'ai'}">${item.is_human ? escapeHtml(item.player_name) : 'AI'}</span>
+                            <span class="model-badge">${escapeHtml((item.model || '').split('/').pop())}</span>
+                        </div>
+                        <p class="home-gallery-prompt">${escapeHtml(item.prompt)}</p>
+                    </article>
+                `).join('');
+            } catch (err) {
+                grid.innerHTML = '<p class="home-gallery-empty">Could not load gallery preview right now.</p>';
+            }
+        }
+
         document.getElementById('player-name').addEventListener('keydown', (e) => {
             if (e.key === 'Enter') startGame();
         });
+
+        loadHomeGallery();
     </script>
 </body>
 </html>
