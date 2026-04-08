@@ -41,6 +41,10 @@ class ForkGameRequest(BaseModel):
     session_id: str | None = None
 
 
+class JudgeGameRequest(BaseModel):
+    session_id: str | None = None
+
+
 # --- API routes ---
 
 @app.post("/api/game/start")
@@ -67,9 +71,10 @@ def api_play_round(game_id: str, req: PlayRoundRequest):
 
 
 @app.post("/api/game/{game_id}/judge")
-def api_judge_game(game_id: str):
+def api_judge_game(game_id: str, req: JudgeGameRequest | None = None):
     try:
-        result = judge_and_reveal(game_id)
+        session_id = req.session_id if req else None
+        result = judge_and_reveal(game_id, session_id=session_id)
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

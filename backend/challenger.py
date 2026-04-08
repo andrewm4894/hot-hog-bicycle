@@ -40,6 +40,7 @@ def generate_challenger_prompt(
     *,
     trace_id: str | None = None,
     distinct_id: str = "ai-challenger",
+    session_id: str | None = None,
 ) -> str:
     """
     Use the challenger model to craft a prompt for the generation model.
@@ -81,6 +82,7 @@ def generate_challenger_prompt(
         messages=messages,
         trace_id=trace_id,
         distinct_id=distinct_id,
+        session_id=session_id,
         span_name="challenger_prompt_generation",
         prompt_name="hot-hog-challenger",
         properties={
@@ -101,6 +103,7 @@ def run_challenger_round(
     *,
     generation_history: list[dict] | None = None,
     trace_id: str | None = None,
+    session_id: str | None = None,
 ) -> dict:
     """
     Run one round for the AI challenger:
@@ -112,6 +115,7 @@ def run_challenger_round(
         round_number=round_number,
         previous_rounds=previous_rounds,
         trace_id=trace_id,
+        session_id=session_id,
     )
 
     svg, raw = generate_svg(
@@ -120,6 +124,7 @@ def run_challenger_round(
         history=generation_history,
         trace_id=trace_id,
         distinct_id="ai-challenger",
+        session_id=session_id,
         properties={
             "round_number": round_number,
             "is_human": False,

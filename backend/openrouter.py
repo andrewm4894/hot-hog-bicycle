@@ -32,6 +32,27 @@ _SVG_SYSTEM_FALLBACK = (
 )
 
 
+def _session_props(session_id: str | None) -> dict:
+    """
+    Build the session-linking properties for an LLM event.
+
+    `$session_id` links the event to the matching session replay (per
+    https://posthog.com/docs/llm-analytics/link-session-replay).
+    `$ai_session_id` groups multiple traces (games) by that same browser
+    session in LLM Analytics.
+
+    When `session_id` is None (e.g. autoplay bot with no browser session)
+    we intentionally set neither — grouping by session isn't meaningful
+    there, and an empty `$session_id` would pollute the replay link.
+    """
+    if not session_id:
+        return {}
+    return {
+        "$session_id": session_id,
+        "$ai_session_id": session_id,
+    }
+
+
 def generate_svg(
     model: str,
     prompt: str,
@@ -39,6 +60,7 @@ def generate_svg(
     history: list[dict] | None = None,
     trace_id: str | None = None,
     distinct_id: str = "anonymous",
+    session_id: str | None = None,
     properties: dict | None = None,
 ) -> tuple[str | None, str]:
     """
@@ -78,7 +100,7 @@ def generate_svg(
             posthog_properties={
                 "$ai_span_name": "svg_generation",
                 "$ai_prompt_name": "hot-hog-svg-system",
-                "$ai_session_id": trace_id,
+                **_session_props(session_id),
                 **ph_props,
             },
         )
@@ -97,6 +119,7 @@ def generate_svg(
                 "$ai_trace_id": trace_id,
                 "model": model,
                 "stage": "svg_generation",
+                **_session_props(session_id),
                 **ph_props,
             },
         )
@@ -112,6 +135,7 @@ def chat_completion(
     *,
     trace_id: str | None = None,
     distinct_id: str = "anonymous",
+    session_id: str | None = None,
     span_name: str = "chat",
     prompt_name: str | None = None,
     properties: dict | None = None,
@@ -146,8 +170,8 @@ def chat_completion(
                 posthog_trace_id=trace_id,
                 posthog_properties={
                     "$ai_span_name": span_name,
-                    "$ai_session_id": trace_id,
                     "tool_loop_iteration": iteration,
+                    **_session_props(session_id),
                     **ph_props,
                 },
             )
@@ -201,8 +225,8 @@ def chat_completion(
             posthog_trace_id=trace_id,
             posthog_properties={
                 "$ai_span_name": span_name,
-                "$ai_session_id": trace_id,
                 "tool_loop_iteration": "final_forced",
+                **_session_props(session_id),
                 **ph_props,
             },
         )
@@ -217,6 +241,7 @@ def chat_completion(
                 "$ai_trace_id": trace_id,
                 "model": model,
                 "stage": span_name,
+                **_session_props(session_id),
                 **ph_props,
             },
         )

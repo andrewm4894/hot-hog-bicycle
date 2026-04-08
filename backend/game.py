@@ -35,17 +35,22 @@ def create_game(player_name: str, session_id: str | None = None) -> dict:
     # Explicit $ai_trace root event so the LLM Analytics trace list shows
     # "<player>-<model>" owned by the player, instead of the default
     # pseudo-trace named after whichever child span fires first.
+    trace_props = {
+        "$ai_trace_id": game_id,
+        "$ai_span_name": f"{player_name}-{generation_model}",
+        "game_id": game_id,
+        "generation_model": generation_model,
+        "challenger_model": challenger_model,
+    }
+    if session_id:
+        # Links the trace to the session replay and groups multiple games
+        # by the same browser session in the LLM Analytics sessions view.
+        trace_props["$session_id"] = session_id
+        trace_props["$ai_session_id"] = session_id
     posthog_client.capture(
         distinct_id=player_name,
         event="$ai_trace",
-        properties={
-            "$ai_trace_id": game_id,
-            "$ai_span_name": f"{player_name}-{generation_model}",
-            "$ai_session_id": session_id or game_id,
-            "game_id": game_id,
-            "generation_model": generation_model,
-            "challenger_model": challenger_model,
-        },
+        properties=trace_props,
     )
 
     props = {
@@ -144,6 +149,7 @@ def play_human_round(game_id: str, prompt: str, fresh_start: bool = False, sessi
                 history=human_gen_history,
                 trace_id=trace_id,
                 distinct_id=player_name,
+                session_id=session_id,
                 properties={**round_props, "is_human": True},
             )
             ai_future = pool.submit(
@@ -154,6 +160,7 @@ def play_human_round(game_id: str, prompt: str, fresh_start: bool = False, sessi
                 previous_rounds=ai_challenger_history,
                 generation_history=ai_gen_history,
                 trace_id=trace_id,
+                session_id=session_id,
             )
 
             human_svg, human_raw = human_future.result()
@@ -219,7 +226,7 @@ def play_human_round(game_id: str, prompt: str, fresh_start: bool = False, sessi
         db.close()
 
 
-def judge_and_reveal(game_id: str) -> dict:
+def judge_and_reveal(game_id: str, session_id: str | None = None) -> dict:
     """
     Judge the final SVGs blindly and reveal results.
     Randomize which is A/B so the judge can't infer.
@@ -266,6 +273,7 @@ def judge_and_reveal(game_id: str) -> dict:
             svg_b=svg_b,
             trace_id=trace_id,
             distinct_id="judge",
+            session_id=session_id,
         )
 
         # Map scores back to human/AI
@@ -306,18 +314,21 @@ def judge_and_reveal(game_id: str) -> dict:
         game.completed_at = datetime.datetime.now(datetime.timezone.utc)
         db.commit()
 
+        completed_props = {
+            "game_id": game_id,
+            "winner": winner,
+            "human_score": game.human_score,
+            "ai_score": game.ai_score,
+            "generation_model": game.generation_model,
+            "challenger_model": game.challenger_model,
+            "$ai_trace_id": trace_id,
+        }
+        if session_id:
+            completed_props["$session_id"] = session_id
         posthog_client.capture(
             distinct_id=game.player_name,
             event="game_completed",
-            properties={
-                "game_id": game_id,
-                "winner": winner,
-                "human_score": game.human_score,
-                "ai_score": game.ai_score,
-                "generation_model": game.generation_model,
-                "challenger_model": game.challenger_model,
-                "$ai_trace_id": trace_id,
-            },
+            properties=completed_props,
         )
 
         return {
@@ -521,18 +532,21 @@ def create_game_from_fork(player_name: str, fork_round_id: int, session_id: str 
         db.commit()
 
         # Explicit $ai_trace root event — see create_game for rationale.
+        trace_props = {
+            "$ai_trace_id": game_id,
+            "$ai_span_name": f"{player_name}-{source_game.generation_model}",
+            "game_id": game_id,
+            "generation_model": source_game.generation_model,
+            "challenger_model": challenger_model,
+            "forked_from_game": fork_round.game_id,
+        }
+        if session_id:
+            trace_props["$session_id"] = session_id
+            trace_props["$ai_session_id"] = session_id
         posthog_client.capture(
             distinct_id=player_name,
             event="$ai_trace",
-            properties={
-                "$ai_trace_id": game_id,
-                "$ai_span_name": f"{player_name}-{source_game.generation_model}",
-                "$ai_session_id": session_id or game_id,
-                "game_id": game_id,
-                "generation_model": source_game.generation_model,
-                "challenger_model": challenger_model,
-                "forked_from_game": fork_round.game_id,
-            },
+            properties=trace_props,
         )
 
         props = {

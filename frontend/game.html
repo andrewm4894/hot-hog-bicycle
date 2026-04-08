@@ -283,7 +283,11 @@
             loading.style.display = 'flex';
 
             try {
-                const res = await fetch(`/api/game/${gameId}/judge`, { method: 'POST' });
+                const res = await fetch(`/api/game/${gameId}/judge`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: getPostHogSessionId() }),
+                });
                 if (!res.ok) {
                     const err = await res.json();
                     throw new Error(err.detail || 'Judging failed');

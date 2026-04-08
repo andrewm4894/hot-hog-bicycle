@@ -40,6 +40,7 @@ def judge_game(
     *,
     trace_id: str | None = None,
     distinct_id: str = "judge",
+    session_id: str | None = None,
 ) -> dict:
     """
     Blindly judge two SVGs. The caller is responsible for randomizing
@@ -66,6 +67,7 @@ def judge_game(
         messages=messages,
         trace_id=trace_id,
         distinct_id=distinct_id,
+        session_id=session_id,
         span_name="judge_scoring",
         prompt_name="hot-hog-judge",
         properties={"judge_model": judge_model},
