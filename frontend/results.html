@@ -80,6 +80,7 @@
                         <div class="svg-preview">${data.human?.svg || '<span class="placeholder">No SVG</span>'}</div>
                         ${renderScores(data.human?.scores)}
                         <div class="roast">${data.human?.scores?.roast || ''}</div>
+                        ${renderRoundsHistory(data.human?.rounds, 'human')}
                     </div>
 
                     <div class="result-card ${data.winner === 'ai' ? 'winner' : ''}">
@@ -88,10 +89,40 @@
                         <div class="svg-preview">${data.ai?.svg || '<span class="placeholder">No SVG</span>'}</div>
                         ${renderScores(data.ai?.scores)}
                         <div class="roast">${data.ai?.scores?.roast || ''}</div>
+                        ${renderRoundsHistory(data.ai?.rounds, 'ai')}
                     </div>
                 </div>
             `;
             setTimeout(addCodeButtons, 0);
+        }
+
+        function escapeHtml(str) {
+            if (str == null) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function renderRoundsHistory(rounds, side) {
+            if (!rounds || rounds.length === 0) return '';
+            const label = side === 'ai' ? 'AI prompts' : 'Your prompts';
+            const wrapperId = side === 'ai' ? 'ai-history' : 'human-history';
+            const entries = rounds.map(r => `
+                <div class="convo-entry">
+                    <div class="convo-round-label">Round ${r.round_number}</div>
+                    <div class="convo-prompt">${escapeHtml(r.prompt)}</div>
+                    ${r.svg ? `<div class="convo-thumb">${r.svg}</div>` : '<div class="convo-no-svg">No valid SVG</div>'}
+                </div>
+            `).join('');
+            return `
+                <details class="convo-history" id="${wrapperId}">
+                    <summary>${label} (${rounds.length} ${rounds.length === 1 ? 'round' : 'rounds'})</summary>
+                    <div class="convo-history-list">${entries}</div>
+                </details>
+            `;
         }
 
         function renderScores(scores) {

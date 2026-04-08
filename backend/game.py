@@ -342,16 +342,45 @@ def judge_and_reveal(game_id: str, session_id: str | None = None) -> dict:
             properties=completed_props,
         )
 
+        human_rounds = (
+            db.query(Round)
+            .filter(Round.game_id == game_id, Round.is_human == True)
+            .order_by(Round.round_number)
+            .all()
+        )
+        ai_rounds = (
+            db.query(Round)
+            .filter(Round.game_id == game_id, Round.is_human == False)
+            .order_by(Round.round_number)
+            .all()
+        )
+
         return {
             "game_id": game_id,
             "winner": winner,
             "human": {
                 "svg": game.human_svg_final,
                 "scores": human_scores,
+                "rounds": [
+                    {
+                        "round_number": r.round_number,
+                        "prompt": r.prompt_text,
+                        "svg": r.svg_output,
+                    }
+                    for r in human_rounds
+                ],
             },
             "ai": {
                 "svg": game.ai_svg_final,
                 "scores": ai_scores,
+                "rounds": [
+                    {
+                        "round_number": r.round_number,
+                        "prompt": r.prompt_text,
+                        "svg": r.svg_output,
+                    }
+                    for r in ai_rounds
+                ],
             },
             "commentary": result.get("commentary", ""),
             "generation_model": game.generation_model,
@@ -602,6 +631,19 @@ def get_results(game_id: str) -> dict | None:
         if game.judge_details:
             details = json.loads(game.judge_details)
 
+        human_rounds = (
+            db.query(Round)
+            .filter(Round.game_id == game_id, Round.is_human == True)
+            .order_by(Round.round_number)
+            .all()
+        )
+        ai_rounds = (
+            db.query(Round)
+            .filter(Round.game_id == game_id, Round.is_human == False)
+            .order_by(Round.round_number)
+            .all()
+        )
+
         return {
             "game_id": game_id,
             "winner": game.winner,
@@ -611,6 +653,14 @@ def get_results(game_id: str) -> dict | None:
                     "total": game.human_score,
                     "roast": game.human_roast,
                 }),
+                "rounds": [
+                    {
+                        "round_number": r.round_number,
+                        "prompt": r.prompt_text,
+                        "svg": r.svg_output,
+                    }
+                    for r in human_rounds
+                ],
             },
             "ai": {
                 "svg": game.ai_svg_final,
@@ -618,6 +668,14 @@ def get_results(game_id: str) -> dict | None:
                     "total": game.ai_score,
                     "roast": game.ai_roast,
                 }),
+                "rounds": [
+                    {
+                        "round_number": r.round_number,
+                        "prompt": r.prompt_text,
+                        "svg": r.svg_output,
+                    }
+                    for r in ai_rounds
+                ],
             },
             "commentary": details.get("commentary", ""),
             "generation_model": game.generation_model,
