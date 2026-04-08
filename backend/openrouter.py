@@ -108,6 +108,28 @@ def generate_svg(
         raw_text = response.choices[0].message.content or ""
         match = SVG_PATTERN.search(raw_text)
         svg = match.group(0) if match else None
+
+        if svg is None:
+            # API call succeeded but the model didn't produce a parseable
+            # <svg>...</svg> block. Capture as an exception linked to the
+            # LLM trace so it shows up in Error Tracking with a clickable
+            # path back to the failing generation.
+            err = ValueError("No <svg>...</svg> block found in model response")
+            log.warning("SVG extraction failed for model=%s trace=%s", model, trace_id)
+            posthog_client.capture_exception(
+                err,
+                distinct_id=distinct_id,
+                properties={
+                    "$ai_trace_id": trace_id,
+                    "model": model,
+                    "stage": "svg_generation",
+                    "error_type": "svg_extraction_failed",
+                    "raw_response_preview": raw_text[:500],
+                    **_session_props(session_id),
+                    **ph_props,
+                },
+            )
+
         return svg, raw_text
 
     except Exception as e:
@@ -119,6 +141,7 @@ def generate_svg(
                 "$ai_trace_id": trace_id,
                 "model": model,
                 "stage": "svg_generation",
+                "error_type": "llm_api_error",
                 **_session_props(session_id),
                 **ph_props,
             },
@@ -241,6 +264,7 @@ def chat_completion(
                 "$ai_trace_id": trace_id,
                 "model": model,
                 "stage": span_name,
+                "error_type": "llm_api_error",
                 **_session_props(session_id),
                 **ph_props,
             },

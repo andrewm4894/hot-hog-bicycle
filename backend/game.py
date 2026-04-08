@@ -4,12 +4,18 @@ import uuid
 import datetime
 from concurrent.futures import ThreadPoolExecutor
 
-from .config import GENERATION_MODELS, CHALLENGER_MODELS, ROUNDS_PER_GAME
+from .config import APP_BASE_URL, GENERATION_MODELS, CHALLENGER_MODELS, ROUNDS_PER_GAME
 from .models import SessionLocal, Game, Round
 from .openrouter import generate_svg
 from .challenger import run_challenger_round
 from .judge import judge_game
 from .posthog_setup import posthog_client
+
+
+def _game_url(game_id: str) -> str:
+    """Public URL for a game's results page, used as a `game_url` custom
+    property on LLM events so PostHog traces link back to the game."""
+    return f"{APP_BASE_URL.rstrip('/')}/results/{game_id}"
 
 
 def create_game(player_name: str, session_id: str | None = None) -> dict:
@@ -39,6 +45,7 @@ def create_game(player_name: str, session_id: str | None = None) -> dict:
         "$ai_trace_id": game_id,
         "$ai_span_name": f"{player_name}-{generation_model}",
         "game_id": game_id,
+        "game_url": _game_url(game_id),
         "generation_model": generation_model,
         "challenger_model": challenger_model,
     }
@@ -134,9 +141,11 @@ def play_human_round(game_id: str, prompt: str, fresh_start: bool = False, sessi
         player_name = game.player_name
 
         # Run human SVG gen and AI challenger in parallel
+        game_url = _game_url(game_id)
         with ThreadPoolExecutor(max_workers=2) as pool:
             round_props = {
                 "game_id": game_id,
+                "game_url": game_url,
                 "round_number": round_number,
             }
             if session_id:
@@ -161,6 +170,7 @@ def play_human_round(game_id: str, prompt: str, fresh_start: bool = False, sessi
                 generation_history=ai_gen_history,
                 trace_id=trace_id,
                 session_id=session_id,
+                game_url=game_url,
             )
 
             human_svg, human_raw = human_future.result()
@@ -274,6 +284,7 @@ def judge_and_reveal(game_id: str, session_id: str | None = None) -> dict:
             trace_id=trace_id,
             distinct_id="judge",
             session_id=session_id,
+            game_url=_game_url(game_id),
         )
 
         # Map scores back to human/AI
@@ -536,6 +547,7 @@ def create_game_from_fork(player_name: str, fork_round_id: int, session_id: str 
             "$ai_trace_id": game_id,
             "$ai_span_name": f"{player_name}-{source_game.generation_model}",
             "game_id": game_id,
+            "game_url": _game_url(game_id),
             "generation_model": source_game.generation_model,
             "challenger_model": challenger_model,
             "forked_from_game": fork_round.game_id,

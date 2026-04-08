@@ -6,6 +6,10 @@ load_dotenv()
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
+# Public base URL the app is served from — used to build `game_url` custom
+# properties on LLM events so PostHog traces can link back to the game page.
+APP_BASE_URL = os.getenv("APP_BASE_URL", "https://hot-hog-app-production.up.railway.app")
+
 POSTHOG_API_KEY = os.getenv("POSTHOG_API_KEY", "")
 POSTHOG_HOST = os.getenv("POSTHOG_HOST", "https://us.i.posthog.com")
 POSTHOG_APP_HOST = os.getenv("POSTHOG_APP_HOST", "https://us.posthog.com")

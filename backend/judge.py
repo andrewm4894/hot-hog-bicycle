@@ -1,10 +1,13 @@
 import json
+import logging
 import random
 
 from .config import JUDGE_MODEL, JUDGE_MODELS
 from .openrouter import chat_completion
-from .posthog_setup import prompts
+from .posthog_setup import posthog_client, prompts
 from .tools import JUDGE_TOOLS
+
+log = logging.getLogger("hot-hog")
 
 _JUDGE_FALLBACK = """\
 You are judging two SVGs, both attempting to depict "a hot dog riding a bicycle."
@@ -41,6 +44,7 @@ def judge_game(
     trace_id: str | None = None,
     distinct_id: str = "judge",
     session_id: str | None = None,
+    game_url: str | None = None,
 ) -> dict:
     """
     Blindly judge two SVGs. The caller is responsible for randomizing
@@ -62,6 +66,10 @@ def judge_game(
 
     judge_model = JUDGE_MODEL if JUDGE_MODEL else random.choice(JUDGE_MODELS)
 
+    judge_props = {"judge_model": judge_model}
+    if game_url:
+        judge_props["game_url"] = game_url
+
     raw = chat_completion(
         model=judge_model,
         messages=messages,
@@ -70,7 +78,7 @@ def judge_game(
         session_id=session_id,
         span_name="judge_scoring",
         prompt_name="hot-hog-judge",
-        properties={"judge_model": judge_model},
+        properties=judge_props,
         tools=JUDGE_TOOLS,
     )
 
@@ -83,9 +91,10 @@ def judge_game(
 
     try:
         parsed = json.loads(cleaned)
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as first_err:
         start = raw.find("{")
         end = raw.rfind("}") + 1
+        parsed = None
         if start >= 0 and end > start:
             try:
                 parsed = json.loads(raw[start:end])
@@ -93,6 +102,24 @@ def judge_game(
                 parsed = None
 
         if not parsed:
+            # Judge model returned something we couldn't parse as JSON even
+            # after extracting the first {...} block. Capture linked to the
+            # LLM trace so Error Tracking shows a clickable path back.
+            log.warning("Judge JSON parse failed for model=%s trace=%s", judge_model, trace_id)
+            judge_err_props = {
+                "$ai_trace_id": trace_id,
+                "model": judge_model,
+                "stage": "judge_scoring",
+                "error_type": "judge_json_parse_failed",
+                "raw_response_preview": raw[:500],
+            }
+            if game_url:
+                judge_err_props["game_url"] = game_url
+            posthog_client.capture_exception(
+                first_err,
+                distinct_id=distinct_id,
+                properties=judge_err_props,
+            )
             parsed = {
                 "svg_a": {"accuracy": 5, "creativity": 5, "quality": 5, "humor": 5, "total": 20, "roast": "The judge was speechless."},
                 "svg_b": {"accuracy": 5, "creativity": 5, "quality": 5, "humor": 5, "total": 20, "roast": "The judge was equally speechless."},

@@ -41,6 +41,7 @@ def generate_challenger_prompt(
     trace_id: str | None = None,
     distinct_id: str = "ai-challenger",
     session_id: str | None = None,
+    game_url: str | None = None,
 ) -> str:
     """
     Use the challenger model to craft a prompt for the generation model.
@@ -77,6 +78,13 @@ def generate_challenger_prompt(
             ),
         })
 
+    challenger_props = {
+        "round_number": round_number,
+        "challenger_model": challenger_model,
+    }
+    if game_url:
+        challenger_props["game_url"] = game_url
+
     prompt = chat_completion(
         model=challenger_model,
         messages=messages,
@@ -85,10 +93,7 @@ def generate_challenger_prompt(
         session_id=session_id,
         span_name="challenger_prompt_generation",
         prompt_name="hot-hog-challenger",
-        properties={
-            "round_number": round_number,
-            "challenger_model": challenger_model,
-        },
+        properties=challenger_props,
         tools=CHALLENGER_TOOLS,
     )
 
@@ -104,6 +109,7 @@ def run_challenger_round(
     generation_history: list[dict] | None = None,
     trace_id: str | None = None,
     session_id: str | None = None,
+    game_url: str | None = None,
 ) -> dict:
     """
     Run one round for the AI challenger:
@@ -116,7 +122,16 @@ def run_challenger_round(
         previous_rounds=previous_rounds,
         trace_id=trace_id,
         session_id=session_id,
+        game_url=game_url,
     )
+
+    svg_props = {
+        "round_number": round_number,
+        "is_human": False,
+        "challenger_model": challenger_model,
+    }
+    if game_url:
+        svg_props["game_url"] = game_url
 
     svg, raw = generate_svg(
         model=generation_model,
@@ -125,11 +140,7 @@ def run_challenger_round(
         trace_id=trace_id,
         distinct_id="ai-challenger",
         session_id=session_id,
-        properties={
-            "round_number": round_number,
-            "is_human": False,
-            "challenger_model": challenger_model,
-        },
+        properties=svg_props,
     )
 
     return {
