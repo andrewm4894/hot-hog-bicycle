@@ -4,11 +4,17 @@ import random
 from .config import JUDGE_MODEL, JUDGE_MODELS
 from .openrouter import chat_completion
 from .posthog_setup import prompts
+from .tools import JUDGE_TOOLS
 
 _JUDGE_FALLBACK = """\
 You are judging two SVGs, both attempting to depict "a hot dog riding a bicycle."
 You do NOT know which was created by a human's prompt vs an AI's prompt.
 Be fair, be funny, and be honest.
+
+You have access to one tool:
+- get_critic_persona — returns a random critic persona (voice + name). Call
+  it ONCE before judging to pick the voice you'll write your roasts in. Skip
+  it if you'd rather use your default voice.
 
 Score each SVG on four criteria (1-10):
 1. Accuracy: Does it actually look like a hot dog on a bicycle?
@@ -18,7 +24,7 @@ Score each SVG on four criteria (1-10):
 
 Provide a brief, witty roast of each SVG (1-2 sentences).
 
-You MUST respond with valid JSON only, no other text:
+Your final response MUST be valid JSON only, no other text:
 {
   "svg_a": {"accuracy": N, "creativity": N, "quality": N, "humor": N, "total": N, "roast": "..."},
   "svg_b": {"accuracy": N, "creativity": N, "quality": N, "humor": N, "total": N, "roast": "..."},
@@ -63,6 +69,7 @@ def judge_game(
         span_name="judge_scoring",
         prompt_name="hot-hog-judge",
         properties={"judge_model": judge_model},
+        tools=JUDGE_TOOLS,
     )
 
     # Extract JSON from the response (handle markdown code blocks)

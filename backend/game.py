@@ -32,6 +32,22 @@ def create_game(player_name: str, session_id: str | None = None) -> dict:
     finally:
         db.close()
 
+    # Explicit $ai_trace root event so the LLM Analytics trace list shows
+    # "<player>-<model>" owned by the player, instead of the default
+    # pseudo-trace named after whichever child span fires first.
+    posthog_client.capture(
+        distinct_id=player_name,
+        event="$ai_trace",
+        properties={
+            "$ai_trace_id": game_id,
+            "$ai_span_name": f"{player_name}-{generation_model}",
+            "$ai_session_id": session_id or game_id,
+            "game_id": game_id,
+            "generation_model": generation_model,
+            "challenger_model": challenger_model,
+        },
+    )
+
     props = {
         "game_id": game_id,
         "generation_model": generation_model,
@@ -503,6 +519,21 @@ def create_game_from_fork(player_name: str, fork_round_id: int, session_id: str 
             db.add(ai_round)
 
         db.commit()
+
+        # Explicit $ai_trace root event — see create_game for rationale.
+        posthog_client.capture(
+            distinct_id=player_name,
+            event="$ai_trace",
+            properties={
+                "$ai_trace_id": game_id,
+                "$ai_span_name": f"{player_name}-{source_game.generation_model}",
+                "$ai_session_id": session_id or game_id,
+                "game_id": game_id,
+                "generation_model": source_game.generation_model,
+                "challenger_model": challenger_model,
+                "forked_from_game": fork_round.game_id,
+            },
+        )
 
         props = {
             "game_id": game_id,

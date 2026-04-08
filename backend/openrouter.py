@@ -3,8 +3,9 @@ import re
 
 from posthog.ai.openai import OpenAI
 
-from .config import OPENROUTER_API_KEY, OPENROUTER_BASE_URL
+from .config import OPENROUTER_API_KEY, OPENROUTER_BASE_URL, TOOL_CAPABLE_MODELS
 from .posthog_setup import posthog_client, prompts
+from .tools import execute_tool
 
 log = logging.getLogger("hot-hog")
 
@@ -102,6 +103,9 @@ def generate_svg(
         return None, f"Error: {e}"
 
 
+MAX_TOOL_ITERATIONS = 5
+
+
 def chat_completion(
     model: str,
     messages: list[dict],
@@ -111,30 +115,98 @@ def chat_completion(
     span_name: str = "chat",
     prompt_name: str | None = None,
     properties: dict | None = None,
+    tools: list | None = None,
 ) -> str:
     """
     General chat completion via OpenRouter with PostHog tracing.
     Used for the challenger agent and the judge.
+
+    If `tools` is provided AND the model is in TOOL_CAPABLE_MODELS, we run a
+    tool-use loop: up to MAX_TOOL_ITERATIONS turns where the model may call
+    tools before producing its final text response. Each iteration is a
+    separate `$ai_generation` event sharing the same trace_id, so PostHog's
+    Tools tab auto-populates from `$ai_tools_called`.
     """
     ph_props = properties or {}
     if prompt_name:
         ph_props["$ai_prompt_name"] = prompt_name
 
+    use_tools = bool(tools) and model in TOOL_CAPABLE_MODELS
+
+    # Mutable working copy so we can append tool-call + tool-result turns
+    working_messages = list(messages)
+
     try:
-        response = client.chat.completions.create(
+        for iteration in range(MAX_TOOL_ITERATIONS + 1):
+            create_kwargs = dict(
+                model=model,
+                messages=working_messages,
+                max_tokens=4096,
+                posthog_distinct_id=distinct_id,
+                posthog_trace_id=trace_id,
+                posthog_properties={
+                    "$ai_span_name": span_name,
+                    "$ai_session_id": trace_id,
+                    "tool_loop_iteration": iteration,
+                    **ph_props,
+                },
+            )
+            if use_tools:
+                create_kwargs["tools"] = tools
+                create_kwargs["tool_choice"] = "auto"
+
+            response = client.chat.completions.create(**create_kwargs)
+            msg = response.choices[0].message
+
+            tool_calls = getattr(msg, "tool_calls", None) or []
+            if not tool_calls:
+                return msg.content or ""
+
+            # Model wants to call one or more tools — append the assistant
+            # turn (with tool_calls) and then each tool's result.
+            working_messages.append({
+                "role": "assistant",
+                "content": msg.content or "",
+                "tool_calls": [
+                    {
+                        "id": tc.id,
+                        "type": "function",
+                        "function": {
+                            "name": tc.function.name,
+                            "arguments": tc.function.arguments or "{}",
+                        },
+                    }
+                    for tc in tool_calls
+                ],
+            })
+            for tc in tool_calls:
+                result = execute_tool(tc.function.name, tc.function.arguments or "{}")
+                working_messages.append({
+                    "role": "tool",
+                    "tool_call_id": tc.id,
+                    "content": result,
+                })
+
+        # Iteration cap hit — nudge the model for a final text answer.
+        log.warning("Tool loop hit max iterations for span=%s model=%s", span_name, model)
+        working_messages.append({
+            "role": "user",
+            "content": "Stop calling tools. Now give me your final answer directly.",
+        })
+        final = client.chat.completions.create(
             model=model,
-            messages=messages,
+            messages=working_messages,
             max_tokens=4096,
             posthog_distinct_id=distinct_id,
             posthog_trace_id=trace_id,
             posthog_properties={
                 "$ai_span_name": span_name,
                 "$ai_session_id": trace_id,
+                "tool_loop_iteration": "final_forced",
                 **ph_props,
             },
         )
-
-        return response.choices[0].message.content or ""
+        return final.choices[0].message.content or ""
 
     except Exception as e:
         log.error("Chat completion failed (%s): %s", span_name, e)

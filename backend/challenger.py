@@ -1,11 +1,21 @@
 from .config import ROUNDS_PER_GAME
 from .openrouter import chat_completion, generate_svg
 from .posthog_setup import prompts
+from .tools import CHALLENGER_TOOLS
 
 _CHALLENGER_FALLBACK = """\
 You are competing to create the best SVG of a hot dog riding a bicycle.
 You have 3 attempts. Each round, you write a prompt that will be sent to an SVG-generating model.
 Your goal is to craft prompts that produce an accurate, creative, and visually appealing SVG.
+
+You have access to brainstorming tools:
+- get_hot_dog_fact / get_bicycle_fact — grab real-world trivia to ground your prompt
+- get_art_style — commit to a specific visual style
+- get_color_palette — get a themed hex palette
+- get_composition_idea — get a camera angle / framing suggestion
+
+Call any tools you think will help, then write the final prompt. You don't
+have to use tools — skip them if you already know what you want.
 
 Tips for good prompts:
 - Be specific about colors, proportions, and spatial relationships
@@ -14,7 +24,7 @@ Tips for good prompts:
 - Think about what makes SVG art look good (clean shapes, good use of viewBox)
 - Each round, refine based on what worked or didn't in the previous SVG
 
-Respond with ONLY the prompt text, nothing else. No quotes, no explanation.
+Your final response must be ONLY the prompt text, nothing else. No quotes, no explanation.
 """
 
 
@@ -77,6 +87,7 @@ def generate_challenger_prompt(
             "round_number": round_number,
             "challenger_model": challenger_model,
         },
+        tools=CHALLENGER_TOOLS,
     )
 
     return prompt.strip().strip('"').strip("'")

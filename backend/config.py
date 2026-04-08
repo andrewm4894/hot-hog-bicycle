@@ -87,3 +87,32 @@ CHALLENGER_MODELS = [
 ]
 
 ROUNDS_PER_GAME = 3
+
+# Models known to support OpenAI-style function/tool calling on OpenRouter.
+# The challenger and judge only get `tools=[...]` if their assigned model
+# is in this set — for others we fall back to a plain chat completion.
+TOOL_CAPABLE_MODELS = {
+    # Anthropic
+    "anthropic/claude-sonnet-4.6",
+    "anthropic/claude-sonnet-4",
+    "anthropic/claude-haiku-4.5",
+    "anthropic/claude-opus-4.5",
+    # OpenAI
+    "openai/gpt-5",
+    "openai/gpt-5.4",
+    "openai/gpt-5.4-mini",
+    "openai/gpt-4.1",
+    "openai/gpt-4.1-mini",
+    "openai/gpt-4o",
+    "openai/o4-mini",
+    # Google
+    "google/gemini-3.1-pro-preview",
+    "google/gemini-3-flash-preview",
+    "google/gemini-2.5-pro",
+    "google/gemini-2.5-flash",
+    # xAI
+    "x-ai/grok-4.20",
+    "x-ai/grok-3-mini",
+    # DeepSeek
+    "deepseek/deepseek-v3.2",
+}
