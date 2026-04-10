@@ -15,8 +15,6 @@ POSTHOG_HOST = os.getenv("POSTHOG_HOST", "https://us.i.posthog.com")
 POSTHOG_APP_HOST = os.getenv("POSTHOG_APP_HOST", "https://us.posthog.com")
 POSTHOG_PERSONAL_API_KEY = os.getenv("POSTHOG_PERSONAL_API_KEY", "")
 
-JUDGE_MODEL = os.getenv("JUDGE_MODEL", "")  # If empty, randomly chosen from JUDGE_MODELS
-
 JUDGE_MODELS = [
     "anthropic/claude-sonnet-4.6",
     "anthropic/claude-sonnet-4",

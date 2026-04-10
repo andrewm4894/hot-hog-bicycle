@@ -116,7 +116,6 @@ make dev
 | `POSTHOG_HOST` | PostHog ingestion host (e.g. `https://us.i.posthog.com`) |
 | `POSTHOG_APP_HOST` | PostHog app host for prompt reads (e.g. `https://us.posthog.com`) |
 | `POSTHOG_PERSONAL_API_KEY` | PostHog personal API key (`phx_...`) for prompt management |
-| `JUDGE_MODEL` | Model used for blind judging (default: `anthropic/claude-sonnet-4`) |
 | `DATABASE_URL` | PostgreSQL connection string (defaults to SQLite for local dev) |
 
 ## Deploying to Railway

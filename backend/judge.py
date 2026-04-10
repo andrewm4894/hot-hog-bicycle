@@ -2,7 +2,7 @@ import json
 import logging
 import random
 
-from .config import JUDGE_MODEL, JUDGE_MODELS
+from .config import JUDGE_MODELS
 from .openrouter import chat_completion
 from .posthog_setup import posthog_client, prompts
 from .tools import JUDGE_TOOLS
@@ -45,6 +45,7 @@ def judge_game(
     distinct_id: str = "judge",
     session_id: str | None = None,
     game_url: str | None = None,
+    judge_model_override: str | None = None,
 ) -> dict:
     """
     Blindly judge two SVGs. The caller is responsible for randomizing
@@ -64,7 +65,7 @@ def judge_game(
         },
     ]
 
-    judge_model = JUDGE_MODEL if JUDGE_MODEL else random.choice(JUDGE_MODELS)
+    judge_model = judge_model_override if judge_model_override else random.choice(JUDGE_MODELS)
 
     judge_props = {"judge_model": judge_model}
     if game_url:

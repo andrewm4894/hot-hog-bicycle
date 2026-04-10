@@ -4,7 +4,7 @@ import uuid
 import datetime
 from concurrent.futures import ThreadPoolExecutor
 
-from .config import APP_BASE_URL, GENERATION_MODELS, CHALLENGER_MODELS, ROUNDS_PER_GAME
+from .config import APP_BASE_URL, GENERATION_MODELS, CHALLENGER_MODELS, JUDGE_MODELS, ROUNDS_PER_GAME
 from .models import SessionLocal, Game, Round
 from .openrouter import generate_svg
 from .challenger import run_challenger_round
@@ -23,6 +23,7 @@ def create_game(player_name: str, session_id: str | None = None) -> dict:
     game_id = uuid.uuid4().hex[:12]
     generation_model = random.choice(GENERATION_MODELS)
     challenger_model = random.choice(CHALLENGER_MODELS)
+    judge_model = random.choice(JUDGE_MODELS)
 
     db = SessionLocal()
     try:
@@ -31,6 +32,7 @@ def create_game(player_name: str, session_id: str | None = None) -> dict:
             player_name=player_name,
             generation_model=generation_model,
             challenger_model=challenger_model,
+            judge_model=judge_model,
             current_round=0,
         )
         db.add(game)
@@ -48,6 +50,7 @@ def create_game(player_name: str, session_id: str | None = None) -> dict:
         "game_url": _game_url(game_id),
         "generation_model": generation_model,
         "challenger_model": challenger_model,
+        "judge_model": judge_model,
     }
     if session_id:
         # Links the trace to the session replay and groups multiple games
@@ -64,6 +67,7 @@ def create_game(player_name: str, session_id: str | None = None) -> dict:
         "game_id": game_id,
         "generation_model": generation_model,
         "challenger_model": challenger_model,
+        "judge_model": judge_model,
         "$ai_trace_id": game_id,
     }
     if session_id:
@@ -79,6 +83,7 @@ def create_game(player_name: str, session_id: str | None = None) -> dict:
         "game_id": game_id,
         "generation_model": generation_model,
         "challenger_model": challenger_model,
+        "judge_model": judge_model,
         "rounds_total": ROUNDS_PER_GAME,
     }
 
@@ -285,6 +290,7 @@ def judge_and_reveal(game_id: str, session_id: str | None = None) -> dict:
             distinct_id="judge",
             session_id=session_id,
             game_url=_game_url(game_id),
+            judge_model_override=game.judge_model,
         )
 
         # Map scores back to human/AI
@@ -534,6 +540,7 @@ def create_game_from_fork(player_name: str, fork_round_id: int, session_id: str 
         # Forked games get ROUNDS_PER_GAME extra rounds from the fork point
         game_id = uuid.uuid4().hex[:12]
         challenger_model = random.choice(CHALLENGER_MODELS)
+        judge_model = random.choice(JUDGE_MODELS)
         forked_rounds = len(history_rounds)
 
         game = Game(
@@ -541,6 +548,7 @@ def create_game_from_fork(player_name: str, fork_round_id: int, session_id: str 
             player_name=player_name,
             generation_model=source_game.generation_model,
             challenger_model=challenger_model,
+            judge_model=judge_model,
             current_round=forked_rounds,
             rounds_total=forked_rounds + ROUNDS_PER_GAME,
         )
@@ -579,6 +587,7 @@ def create_game_from_fork(player_name: str, fork_round_id: int, session_id: str 
             "game_url": _game_url(game_id),
             "generation_model": source_game.generation_model,
             "challenger_model": challenger_model,
+            "judge_model": judge_model,
             "forked_from_game": fork_round.game_id,
         }
         if session_id:
@@ -594,6 +603,7 @@ def create_game_from_fork(player_name: str, fork_round_id: int, session_id: str 
             "game_id": game_id,
             "generation_model": source_game.generation_model,
             "challenger_model": challenger_model,
+            "judge_model": judge_model,
             "forked_from_game": fork_round.game_id,
             "forked_from_round": fork_round_id,
             "$ai_trace_id": game_id,
