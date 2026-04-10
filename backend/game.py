@@ -673,6 +673,7 @@ def appeal_game(game_id: str, appeal_text: str, session_id: str | None = None) -
             original_scores=details,
             appeal_text=appeal_text,
             appellant_side=appellant_label,
+            human_is_a=human_is_a,
             trace_id=trace_id,
             distinct_id="appeal-judge",
             session_id=session_id,

@@ -54,6 +54,7 @@ def judge_appeal(
     appeal_text: str,
     appellant_side: str,
     *,
+    human_is_a: bool = True,
     trace_id: str | None = None,
     distinct_id: str = "appeal-judge",
     session_id: str | None = None,
@@ -72,20 +73,29 @@ def judge_appeal(
         available = JUDGE_MODELS
     appeal_model = random.choice(available)
 
+    # Map original scores to match the current A/B SVG assignment so the
+    # appeal judge sees consistent labels.
+    if human_is_a:
+        scores_a = original_scores.get("human_scores", {})
+        scores_b = original_scores.get("ai_scores", {})
+    else:
+        scores_a = original_scores.get("ai_scores", {})
+        scores_b = original_scores.get("human_scores", {})
+
     original_summary = (
         f"Original verdict: {original_scores.get('commentary', 'No commentary')}\n"
-        f"SVG A scores: accuracy={original_scores.get('human_scores', {}).get('accuracy', '?')}, "
-        f"creativity={original_scores.get('human_scores', {}).get('creativity', '?')}, "
-        f"quality={original_scores.get('human_scores', {}).get('quality', '?')}, "
-        f"humor={original_scores.get('human_scores', {}).get('humor', '?')}, "
-        f"total={original_scores.get('human_scores', {}).get('total', '?')}\n"
-        f"SVG A roast: {original_scores.get('human_scores', {}).get('roast', 'N/A')}\n"
-        f"SVG B scores: accuracy={original_scores.get('ai_scores', {}).get('accuracy', '?')}, "
-        f"creativity={original_scores.get('ai_scores', {}).get('creativity', '?')}, "
-        f"quality={original_scores.get('ai_scores', {}).get('quality', '?')}, "
-        f"humor={original_scores.get('ai_scores', {}).get('humor', '?')}, "
-        f"total={original_scores.get('ai_scores', {}).get('total', '?')}\n"
-        f"SVG B roast: {original_scores.get('ai_scores', {}).get('roast', 'N/A')}"
+        f"SVG A scores: accuracy={scores_a.get('accuracy', '?')}, "
+        f"creativity={scores_a.get('creativity', '?')}, "
+        f"quality={scores_a.get('quality', '?')}, "
+        f"humor={scores_a.get('humor', '?')}, "
+        f"total={scores_a.get('total', '?')}\n"
+        f"SVG A roast: {scores_a.get('roast', 'N/A')}\n"
+        f"SVG B scores: accuracy={scores_b.get('accuracy', '?')}, "
+        f"creativity={scores_b.get('creativity', '?')}, "
+        f"quality={scores_b.get('quality', '?')}, "
+        f"humor={scores_b.get('humor', '?')}, "
+        f"total={scores_b.get('total', '?')}\n"
+        f"SVG B roast: {scores_b.get('roast', 'N/A')}"
     )
 
     messages = [

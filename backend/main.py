@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Header
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .models import init_db
 from .config import GENERATION_MODELS
@@ -46,7 +46,7 @@ class JudgeGameRequest(BaseModel):
 
 
 class AppealRequest(BaseModel):
-    appeal_text: str
+    appeal_text: str = Field(..., min_length=1, max_length=500)
     session_id: str | None = None
 
 

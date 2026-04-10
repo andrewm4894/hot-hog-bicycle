@@ -71,7 +71,7 @@
             const winnerText = effectiveWinner === 'human' ? 'YOU BEAT THE MACHINE!' :
                               effectiveWinner === 'ai' ? 'THE AI WINS THIS ROUND!' : "IT'S A TIE!";
 
-            const canAppeal = data.winner !== 'tie' && !data.appeal;
+            const canAppeal = data.winner === 'ai' && !data.appeal;
 
             container.innerHTML = `
                 <div class="reveal-banner ${winnerClass}">${winnerText}</div>
@@ -111,12 +111,11 @@
         }
 
         function renderAppealForm(originalWinner) {
-            const loserLabel = originalWinner === 'human' ? 'AI' : 'You';
             return `
                 <div class="appeal-section">
                     <div class="appeal-prompt">
                         <h3>Disagree with the ruling?</h3>
-                        <p>The losing side can file an appeal to the Supreme Hot Dog Court. A different judge will review all the evidence.</p>
+                        <p>File an appeal to the Supreme Hot Dog Court! A different judge will review both SVGs, the original scores, and your plea.</p>
                     </div>
                     <div id="appeal-form" class="appeal-form">
                         <textarea id="appeal-text" class="appeal-textarea" rows="3"
@@ -137,7 +136,7 @@
             const overturned = appeal.verdict === 'overturned';
             const verdictClass = overturned ? 'appeal-overturned' : 'appeal-upheld';
             const verdictText = overturned ? 'OVERTURNED!' : 'UPHELD';
-            const verdictIcon = overturned ? '&#x2696;' : '&#x2696;';
+            const verdictIcon = overturned ? '&#x1F389;' : '&#x2696;';
 
             return `
                 <div class="appeal-section">
@@ -157,11 +156,11 @@
                             </div>
                         ` : ''}
 
-                        <div class="appeal-reasoning">${appeal.reasoning || ''}</div>
+                        <div class="appeal-reasoning">${escapeHtml(appeal.reasoning || '')}</div>
 
                         ${appeal.response_to_appellant ? `
                             <div class="appeal-response">
-                                <strong>To the appellant:</strong> ${appeal.response_to_appellant}
+                                <strong>To the appellant:</strong> ${escapeHtml(appeal.response_to_appellant)}
                             </div>
                         ` : ''}
 
