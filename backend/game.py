@@ -5,6 +5,7 @@ import datetime
 from concurrent.futures import ThreadPoolExecutor
 
 from .config import APP_BASE_URL, GENERATION_MODELS, CHALLENGER_MODELS, JUDGE_MODELS, ROUNDS_PER_GAME
+from .appeal import judge_appeal
 from .models import SessionLocal, Game, Round
 from .openrouter import generate_svg
 from .challenger import run_challenger_round
@@ -392,6 +393,7 @@ def judge_and_reveal(game_id: str, session_id: str | None = None) -> dict:
             "generation_model": game.generation_model,
             "challenger_model": game.challenger_model,
             "judge_model": game.judge_model,
+            "appeal": None,
         }
     finally:
         db.close()
@@ -629,6 +631,131 @@ def create_game_from_fork(player_name: str, fork_round_id: int, session_id: str 
         db.close()
 
 
+def appeal_game(game_id: str, appeal_text: str, session_id: str | None = None) -> dict:
+    """
+    File an appeal on behalf of the losing side.
+    A different supreme judge reviews all evidence + the appellant's plea.
+    """
+    db = SessionLocal()
+    try:
+        game = db.query(Game).filter(Game.id == game_id).first()
+        if not game:
+            raise ValueError(f"Game {game_id} not found")
+        if game.status != "complete":
+            raise ValueError("Game is not complete yet")
+        if game.appeal_verdict:
+            raise ValueError("Appeal already filed for this game")
+        if game.winner == "tie":
+            raise ValueError("Cannot appeal a tie — both sides are equally guilty")
+
+        # The loser is the appellant
+        appellant = "ai" if game.winner == "human" else "human"
+
+        # Load original judge details
+        details = {}
+        if game.judge_details:
+            details = json.loads(game.judge_details)
+
+        trace_id = game_id
+
+        # Randomize SVG assignment (same as original judging)
+        human_is_a = random.choice([True, False])
+        if human_is_a:
+            svg_a, svg_b = game.human_svg_final, game.ai_svg_final
+            appellant_label = "A" if appellant == "human" else "B"
+        else:
+            svg_a, svg_b = game.ai_svg_final, game.human_svg_final
+            appellant_label = "B" if appellant == "human" else "A"
+
+        result = judge_appeal(
+            svg_a=svg_a,
+            svg_b=svg_b,
+            original_scores=details,
+            appeal_text=appeal_text,
+            appellant_side=appellant_label,
+            trace_id=trace_id,
+            distinct_id="appeal-judge",
+            session_id=session_id,
+            game_url=_game_url(game_id),
+            exclude_model=game.judge_model,
+        )
+
+        verdict = result.get("verdict", "upheld")
+
+        # Map new_winner back from A/B to human/ai
+        raw_new_winner = result.get("new_winner", "tie")
+        if human_is_a:
+            if raw_new_winner == "A":
+                new_winner = "human"
+            elif raw_new_winner == "B":
+                new_winner = "ai"
+            else:
+                new_winner = "tie"
+        else:
+            if raw_new_winner == "A":
+                new_winner = "ai"
+            elif raw_new_winner == "B":
+                new_winner = "human"
+            else:
+                new_winner = "tie"
+
+        # Map scores back
+        if human_is_a:
+            appeal_human_scores = result.get("svg_a", {})
+            appeal_ai_scores = result.get("svg_b", {})
+        else:
+            appeal_human_scores = result.get("svg_b", {})
+            appeal_ai_scores = result.get("svg_a", {})
+
+        # Persist appeal results
+        game.appeal_text = appeal_text
+        game.appeal_appellant = appellant
+        game.appeal_judge_model = result.get("appeal_judge_model", "unknown")
+        game.appeal_verdict = verdict
+        game.appeal_details = json.dumps({
+            "human_scores": appeal_human_scores,
+            "ai_scores": appeal_ai_scores,
+            "reasoning": result.get("reasoning", ""),
+            "response_to_appellant": result.get("response_to_appellant", ""),
+        })
+        game.appeal_new_winner = new_winner if verdict == "overturned" else game.winner
+        game.appealed_at = datetime.datetime.now(datetime.timezone.utc)
+        db.commit()
+
+        # PostHog event
+        appeal_props = {
+            "game_id": game_id,
+            "appellant": appellant,
+            "verdict": verdict,
+            "original_winner": game.winner,
+            "appeal_new_winner": game.appeal_new_winner,
+            "appeal_judge_model": game.appeal_judge_model,
+            "$ai_trace_id": trace_id,
+        }
+        if session_id:
+            appeal_props["$session_id"] = session_id
+        posthog_client.capture(
+            distinct_id=game.player_name,
+            event="appeal_completed",
+            properties=appeal_props,
+        )
+
+        return {
+            "game_id": game_id,
+            "appellant": appellant,
+            "verdict": verdict,
+            "original_winner": game.winner,
+            "new_winner": game.appeal_new_winner,
+            "appeal_judge_model": game.appeal_judge_model,
+            "human_scores": appeal_human_scores,
+            "ai_scores": appeal_ai_scores,
+            "reasoning": result.get("reasoning", ""),
+            "response_to_appellant": result.get("response_to_appellant", ""),
+        }
+    finally:
+        db.close()
+
+
 def get_results(game_id: str) -> dict | None:
     """Get the full results of a completed game from stored data."""
     db = SessionLocal()
@@ -691,6 +818,27 @@ def get_results(game_id: str) -> dict | None:
             "generation_model": game.generation_model,
             "challenger_model": game.challenger_model,
             "judge_model": game.judge_model,
+            "appeal": _build_appeal_response(game),
         }
     finally:
         db.close()
+
+
+def _build_appeal_response(game: Game) -> dict | None:
+    """Build the appeal sub-object for API responses, or None if no appeal."""
+    if not game.appeal_verdict:
+        return None
+    appeal_details = {}
+    if game.appeal_details:
+        appeal_details = json.loads(game.appeal_details)
+    return {
+        "appellant": game.appeal_appellant,
+        "appeal_text": game.appeal_text,
+        "verdict": game.appeal_verdict,
+        "new_winner": game.appeal_new_winner,
+        "appeal_judge_model": game.appeal_judge_model,
+        "human_scores": appeal_details.get("human_scores", {}),
+        "ai_scores": appeal_details.get("ai_scores", {}),
+        "reasoning": appeal_details.get("reasoning", ""),
+        "response_to_appellant": appeal_details.get("response_to_appellant", ""),
+    }

@@ -1262,3 +1262,204 @@ nav a.nav-docs-link:hover {
     left: 50%;
     transform: translate(-50%, -50%);
 }
+
+/* ========== APPEAL SECTION ========== */
+
+.appeal-section {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px dashed var(--border);
+}
+
+.appeal-prompt {
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.appeal-prompt h3 {
+    font-family: var(--font-display);
+    font-size: 1rem;
+    color: var(--mustard);
+    margin-bottom: 0.35rem;
+}
+
+.appeal-prompt p {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+.appeal-form {
+    max-width: 560px;
+    margin: 0 auto;
+}
+
+.appeal-textarea {
+    width: 100%;
+    padding: 0.75rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    resize: vertical;
+    transition: border-color 0.2s;
+}
+
+.appeal-textarea:focus {
+    outline: none;
+    border-color: var(--mustard);
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.15);
+}
+
+.appeal-textarea::placeholder {
+    color: var(--text-dim);
+}
+
+.appeal-form-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 0.5rem;
+}
+
+.appeal-char-count {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-dim);
+}
+
+.appeal-btn {
+    font-family: var(--font-display);
+    font-size: 0.8rem;
+    padding: 0.55rem 1.25rem;
+    border: 2px solid var(--mustard);
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--mustard);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.appeal-btn:hover:not(:disabled) {
+    background: rgba(245, 158, 11, 0.2);
+    box-shadow: var(--glow-mustard);
+}
+
+.appeal-btn:disabled {
+    opacity: 0.7;
+    cursor: wait;
+}
+
+/* Appeal result card */
+
+.appeal-result {
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    border: 2px solid var(--border);
+    position: relative;
+    overflow: hidden;
+}
+
+.appeal-result.appeal-overturned {
+    border-color: var(--relish);
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.08), rgba(34, 197, 94, 0.02));
+}
+
+.appeal-result.appeal-upheld {
+    border-color: var(--ketchup);
+    background: linear-gradient(135deg, rgba(214, 40, 40, 0.08), rgba(214, 40, 40, 0.02));
+}
+
+.appeal-verdict-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.appeal-gavel {
+    font-size: 1.4rem;
+}
+
+.appeal-verdict-text {
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+}
+
+.appeal-overturned .appeal-verdict-text {
+    color: var(--relish);
+    text-shadow: var(--glow-relish);
+}
+
+.appeal-upheld .appeal-verdict-text {
+    color: var(--ketchup-bright);
+    text-shadow: var(--glow-ketchup);
+}
+
+.appeal-meta {
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-bottom: 0.75rem;
+}
+
+.appeal-plea {
+    background: rgba(0, 0, 0, 0.2);
+    padding: 0.65rem 0.85rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+    font-style: italic;
+}
+
+.appeal-reasoning {
+    text-align: center;
+    font-size: 0.95rem;
+    color: var(--text);
+    margin-bottom: 0.75rem;
+    line-height: 1.5;
+}
+
+.appeal-response {
+    background: rgba(0, 0, 0, 0.25);
+    padding: 0.65rem 0.85rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    color: var(--mustard);
+    margin-bottom: 0.75rem;
+}
+
+.appeal-new-scores {
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border);
+}
+
+.appeal-new-scores h4 {
+    text-align: center;
+    font-family: var(--font-display);
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+}
+
+.appeal-scores-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    text-align: center;
+}
+
+.appeal-scores-grid strong {
+    display: block;
+    font-family: var(--font-display);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-bottom: 0.25rem;
+}

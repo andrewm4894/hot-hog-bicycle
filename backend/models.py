@@ -34,6 +34,15 @@ class Game(Base):
     created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
     completed_at = Column(DateTime, nullable=True)
 
+    # Appeal process
+    appeal_text = Column(Text, nullable=True)  # Losing player's plea
+    appeal_appellant = Column(String, nullable=True)  # "human" | "ai"
+    appeal_judge_model = Column(String, nullable=True)
+    appeal_verdict = Column(String, nullable=True)  # "upheld" | "overturned"
+    appeal_details = Column(Text, nullable=True)  # JSON: full appeal judge response
+    appeal_new_winner = Column(String, nullable=True)  # winner after appeal (if overturned)
+    appealed_at = Column(DateTime, nullable=True)
+
 
 class Round(Base):
     __tablename__ = "rounds"
@@ -61,6 +70,19 @@ def init_db():
         if "rounds_total" not in game_columns:
             log.info("Migrating: adding rounds_total column to games")
             conn.execute(text("ALTER TABLE games ADD COLUMN rounds_total INTEGER"))
+        appeal_cols = {
+            "appeal_text": "TEXT",
+            "appeal_appellant": "VARCHAR",
+            "appeal_judge_model": "VARCHAR",
+            "appeal_verdict": "VARCHAR",
+            "appeal_details": "TEXT",
+            "appeal_new_winner": "VARCHAR",
+            "appealed_at": "DATETIME",
+        }
+        for col_name, col_type in appeal_cols.items():
+            if col_name not in game_columns:
+                log.info("Migrating: adding %s column to games", col_name)
+                conn.execute(text(f"ALTER TABLE games ADD COLUMN {col_name} {col_type}"))
 
 
 def get_db():
