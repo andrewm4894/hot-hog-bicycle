@@ -16,6 +16,25 @@ from .posthog_setup import posthog_client
 
 log = logging.getLogger("hot-hog")
 
+_PLACEHOLDER_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">'
+    '<rect width="400" height="400" fill="#1A0A0A"/>'
+    # Sad fallen hot dog
+    '<ellipse cx="200" cy="280" rx="60" ry="16" fill="#8B4513" opacity="0.3"/>'
+    '<rect x="155" y="250" width="90" height="30" rx="15" fill="#D2691E" transform="rotate(-15 200 265)"/>'
+    '<rect x="160" y="248" width="80" height="10" rx="5" fill="#F5DEB3" transform="rotate(-15 200 253)"/>'
+    # Broken bicycle wheel
+    '<circle cx="300" cy="180" r="30" fill="none" stroke="#6B5D52" stroke-width="2" stroke-dasharray="8 4"/>'
+    '<line x1="300" y1="150" x2="300" y2="210" stroke="#6B5D52" stroke-width="1.5"/>'
+    '<line x1="270" y1="180" x2="330" y2="180" stroke="#6B5D52" stroke-width="1.5"/>'
+    # Sad text
+    '<text x="200" y="340" text-anchor="middle" fill="#D62828" font-size="16" '
+    'font-family="sans-serif" font-weight="bold">SVG generation failed</text>'
+    '<text x="200" y="365" text-anchor="middle" fill="#6B5D52" font-size="12" '
+    'font-family="sans-serif">the hot dog fell off the bicycle</text>'
+    '</svg>'
+)
+
 
 def _game_url(game_id: str) -> str:
     """Public URL for a game's results page, used as a `game_url` custom
@@ -271,10 +290,10 @@ def judge_and_reveal(game_id: str, session_id: str | None = None) -> dict:
                 .order_by(Round.round_number.desc())
                 .first()
             )
-            if not latest_human or not latest_ai:
-                raise ValueError("Need at least one successful round from both sides before judging")
-            game.human_svg_final = latest_human.svg_output
-            game.ai_svg_final = latest_ai.svg_output
+            if not game.human_svg_final:
+                game.human_svg_final = latest_human.svg_output if latest_human else _PLACEHOLDER_SVG
+            if not game.ai_svg_final:
+                game.ai_svg_final = latest_ai.svg_output if latest_ai else _PLACEHOLDER_SVG
 
         game.status = "judging"
         db.commit()
