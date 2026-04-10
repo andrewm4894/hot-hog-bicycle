@@ -5,11 +5,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Header
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .models import init_db
 from .config import GENERATION_MODELS
-from .game import create_game, create_game_from_fork, play_human_round, judge_and_reveal, get_leaderboard, get_game_state, get_results, get_gallery
+from .game import create_game, create_game_from_fork, play_human_round, judge_and_reveal, appeal_game, get_leaderboard, get_game_state, get_results, get_gallery
 
 
 @asynccontextmanager
@@ -45,6 +45,11 @@ class JudgeGameRequest(BaseModel):
     session_id: str | None = None
 
 
+class AppealRequest(BaseModel):
+    appeal_text: str = Field(..., min_length=1, max_length=500)
+    session_id: str | None = None
+
+
 # --- API routes ---
 
 @app.post("/api/game/start")
@@ -75,6 +80,15 @@ def api_judge_game(game_id: str, req: JudgeGameRequest | None = None):
     try:
         session_id = req.session_id if req else None
         result = judge_and_reveal(game_id, session_id=session_id)
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/game/{game_id}/appeal")
+def api_appeal_game(game_id: str, req: AppealRequest):
+    try:
+        result = appeal_game(game_id, req.appeal_text, session_id=req.session_id)
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

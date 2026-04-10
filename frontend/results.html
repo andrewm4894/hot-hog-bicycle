@@ -55,12 +55,23 @@
             }
         }
 
+        // Store current game data globally for appeal logic
+        let currentGameData = null;
+
         function renderFullResults(data) {
+            currentGameData = data;
             const container = document.getElementById('results-content');
-            const winnerClass = data.winner === 'human' ? 'human-wins' :
-                               data.winner === 'ai' ? 'ai-wins' : 'tie';
-            const winnerText = data.winner === 'human' ? 'YOU BEAT THE MACHINE!' :
-                              data.winner === 'ai' ? 'THE AI WINS THIS ROUND!' : "IT'S A TIE!";
+
+            // Determine the effective winner (after appeal if overturned)
+            const appeal = data.appeal;
+            const effectiveWinner = (appeal && appeal.verdict === 'overturned') ? appeal.new_winner : data.winner;
+
+            const winnerClass = effectiveWinner === 'human' ? 'human-wins' :
+                               effectiveWinner === 'ai' ? 'ai-wins' : 'tie';
+            const winnerText = effectiveWinner === 'human' ? 'YOU BEAT THE MACHINE!' :
+                              effectiveWinner === 'ai' ? 'THE AI WINS THIS ROUND!' : "IT'S A TIE!";
+
+            const canAppeal = data.winner === 'ai' && !data.appeal;
 
             container.innerHTML = `
                 <div class="reveal-banner ${winnerClass}">${winnerText}</div>
@@ -74,8 +85,8 @@
                 </div>
 
                 <div class="results-grid">
-                    <div class="result-card ${data.winner === 'human' ? 'winner' : ''}">
-                        <h3>${data.winner === 'human' ? 'Your Hot Dog (Winner!)' : 'Your Hot Dog'}</h3>
+                    <div class="result-card ${effectiveWinner === 'human' ? 'winner' : ''}">
+                        <h3>${effectiveWinner === 'human' ? 'Your Hot Dog (Winner!)' : 'Your Hot Dog'}</h3>
                         <div class="score-total">${data.human?.scores?.total || '?'}<span style="font-size:1rem;color:var(--text-dim)">/40</span></div>
                         <div class="svg-preview">${data.human?.svg || '<span class="placeholder">No SVG</span>'}</div>
                         ${renderScores(data.human?.scores)}
@@ -83,8 +94,8 @@
                         ${renderRoundsHistory(data.human?.rounds, 'human')}
                     </div>
 
-                    <div class="result-card ${data.winner === 'ai' ? 'winner' : ''}">
-                        <h3>${data.winner === 'ai' ? 'AI Challenger (Winner!)' : 'AI Challenger'}</h3>
+                    <div class="result-card ${effectiveWinner === 'ai' ? 'winner' : ''}">
+                        <h3>${effectiveWinner === 'ai' ? 'AI Challenger (Winner!)' : 'AI Challenger'}</h3>
                         <div class="score-total">${data.ai?.scores?.total || '?'}<span style="font-size:1rem;color:var(--text-dim)">/40</span></div>
                         <div class="svg-preview">${data.ai?.svg || '<span class="placeholder">No SVG</span>'}</div>
                         ${renderScores(data.ai?.scores)}
@@ -92,9 +103,141 @@
                         ${renderRoundsHistory(data.ai?.rounds, 'ai')}
                     </div>
                 </div>
+
+                ${appeal ? renderAppealResults(appeal, data.winner) : ''}
+                ${canAppeal ? renderAppealForm(data.winner) : ''}
             `;
             setTimeout(addCodeButtons, 0);
         }
+
+        function renderAppealForm(originalWinner) {
+            return `
+                <div class="appeal-section">
+                    <div class="appeal-prompt">
+                        <h3>Disagree with the ruling?</h3>
+                        <p>File an appeal to the Supreme Hot Dog Court! A different judge will review both SVGs, the original scores, and your plea.</p>
+                    </div>
+                    <div id="appeal-form" class="appeal-form">
+                        <textarea id="appeal-text" class="appeal-textarea" rows="3"
+                            placeholder="Plead your case... Why was the original ruling unfair?"
+                            maxlength="500"></textarea>
+                        <div class="appeal-form-footer">
+                            <span class="appeal-char-count"><span id="appeal-char">0</span>/500</span>
+                            <button onclick="submitAppeal()" class="btn appeal-btn">
+                                File Appeal
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderAppealResults(appeal, originalWinner) {
+            const overturned = appeal.verdict === 'overturned';
+            const verdictClass = overturned ? 'appeal-overturned' : 'appeal-upheld';
+            const verdictText = overturned ? 'OVERTURNED!' : 'UPHELD';
+            const verdictIcon = overturned ? '&#x1F389;' : '&#x2696;';
+
+            return `
+                <div class="appeal-section">
+                    <div class="appeal-result ${verdictClass}">
+                        <div class="appeal-verdict-banner">
+                            <span class="appeal-gavel">${verdictIcon}</span>
+                            <span class="appeal-verdict-text">APPEAL ${verdictText}</span>
+                        </div>
+
+                        <div class="appeal-meta">
+                            Reviewed by <span class="model-badge" style="font-size: 0.75rem;">${(appeal.appeal_judge_model || 'unknown').split('/').pop()}</span>
+                        </div>
+
+                        ${appeal.appeal_text ? `
+                            <div class="appeal-plea">
+                                <strong>The plea:</strong> "${escapeHtml(appeal.appeal_text)}"
+                            </div>
+                        ` : ''}
+
+                        <div class="appeal-reasoning">${escapeHtml(appeal.reasoning || '')}</div>
+
+                        ${appeal.response_to_appellant ? `
+                            <div class="appeal-response">
+                                <strong>To the appellant:</strong> ${escapeHtml(appeal.response_to_appellant)}
+                            </div>
+                        ` : ''}
+
+                        ${overturned ? `
+                            <div class="appeal-new-scores">
+                                <h4>Revised Scores</h4>
+                                <div class="appeal-scores-grid">
+                                    <div>
+                                        <strong>Your Hot Dog</strong>
+                                        <div class="score-total">${appeal.human_scores?.total || '?'}<span style="font-size:0.8rem;color:var(--text-dim)">/40</span></div>
+                                        ${renderScores(appeal.human_scores)}
+                                    </div>
+                                    <div>
+                                        <strong>AI Challenger</strong>
+                                        <div class="score-total">${appeal.ai_scores?.total || '?'}<span style="font-size:0.8rem;color:var(--text-dim)">/40</span></div>
+                                        ${renderScores(appeal.ai_scores)}
+                                    </div>
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        async function submitAppeal() {
+            const textarea = document.getElementById('appeal-text');
+            const appealText = textarea.value.trim();
+            if (!appealText) {
+                textarea.focus();
+                return;
+            }
+
+            const btn = document.querySelector('.appeal-btn');
+            const form = document.getElementById('appeal-form');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> The Supreme Court is deliberating...';
+            textarea.disabled = true;
+
+            try {
+                const res = await fetch(`/api/game/${gameId}/appeal`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        appeal_text: appealText,
+                        session_id: window.posthog?.get_session_id?.() || null,
+                    }),
+                });
+
+                if (res.ok) {
+                    // Reload the full results page to show appeal outcome
+                    const data = await fetch(`/api/game/${gameId}/results`);
+                    if (data.ok) {
+                        renderFullResults(await data.json());
+                    }
+                } else {
+                    const err = await res.json();
+                    btn.disabled = false;
+                    btn.textContent = 'File Appeal';
+                    textarea.disabled = false;
+                    alert(err.detail || 'Appeal failed');
+                }
+            } catch (e) {
+                btn.disabled = false;
+                btn.textContent = 'File Appeal';
+                textarea.disabled = false;
+                alert('Network error — try again');
+            }
+        }
+
+        // Character counter for appeal textarea
+        document.addEventListener('input', function(e) {
+            if (e.target.id === 'appeal-text') {
+                const counter = document.getElementById('appeal-char');
+                if (counter) counter.textContent = e.target.value.length;
+            }
+        });
 
         function escapeHtml(str) {
             if (str == null) return '';
