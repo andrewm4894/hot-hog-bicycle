@@ -77,7 +77,7 @@ def init_db():
             "appeal_verdict": "VARCHAR",
             "appeal_details": "TEXT",
             "appeal_new_winner": "VARCHAR",
-            "appealed_at": "DATETIME",
+            "appealed_at": "TIMESTAMP",
         }
         for col_name, col_type in appeal_cols.items():
             if col_name not in game_columns:
