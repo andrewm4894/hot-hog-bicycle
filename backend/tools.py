@@ -171,6 +171,31 @@ CHALLENGER_TOOLS = [
     },
 ]
 
+APPEAL_DECISION_TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "file_appeal",
+            "description": (
+                "File an appeal against the judge's ruling with the Supreme Hot Dog Court. "
+                "Only call this if you genuinely believe the ruling was unfair and your SVG "
+                "deserved better. If you accept the ruling, do NOT call this tool."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "plea": {
+                        "type": "string",
+                        "description": "Your passionate argument (max 500 chars) for why the ruling should be overturned.",
+                    },
+                },
+                "required": ["plea"],
+                "additionalProperties": False,
+            },
+        },
+    },
+]
+
 JUDGE_TOOLS = [
     {
         "type": "function",
