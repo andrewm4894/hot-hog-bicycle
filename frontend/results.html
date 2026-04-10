@@ -57,6 +57,7 @@
 
         // Store current game data globally for appeal logic
         let currentGameData = null;
+        let aiAppealPollTimer = null;
 
         function renderFullResults(data) {
             currentGameData = data;
@@ -71,7 +72,12 @@
             const winnerText = effectiveWinner === 'human' ? 'YOU BEAT THE MACHINE!' :
                               effectiveWinner === 'ai' ? 'THE AI WINS THIS ROUND!' : "IT'S A TIE!";
 
-            const canAppeal = data.winner === 'ai' && !data.appeal;
+            // Human can appeal when they lost; AI appeals automatically when it loses
+            const canHumanAppeal = data.winner === 'ai' && !data.appeal;
+            // Only show "deliberating" if game completed recently (within 2 min)
+            const completedRecently = data.completed_at &&
+                (Date.now() - new Date(data.completed_at).getTime()) < 120_000;
+            const aiDeliberating = data.winner === 'human' && !data.appeal && completedRecently;
 
             container.innerHTML = `
                 <div class="reveal-banner ${winnerClass}">${winnerText}</div>
@@ -105,9 +111,65 @@
                 </div>
 
                 ${appeal ? renderAppealResults(appeal, data.winner) : ''}
-                ${canAppeal ? renderAppealForm(data.winner) : ''}
+                ${aiDeliberating ? renderAiDeliberating() : ''}
+                ${canHumanAppeal ? renderAppealForm(data.winner) : ''}
             `;
             setTimeout(addCodeButtons, 0);
+
+            // Poll for AI appeal decision when the human won
+            if (aiDeliberating) {
+                startAiAppealPolling();
+            } else {
+                stopAiAppealPolling();
+            }
+        }
+
+        function renderAiDeliberating() {
+            return `
+                <div class="appeal-section">
+                    <div class="appeal-deliberating">
+                        <span class="spinner"></span>
+                        <span>The AI challenger is considering whether to appeal...</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        let aiAppealPollCount = 0;
+        const AI_APPEAL_MAX_POLLS = 30; // ~60 seconds at 2s intervals
+
+        function startAiAppealPolling() {
+            stopAiAppealPolling();
+            aiAppealPollCount = 0;
+            aiAppealPollTimer = setInterval(async () => {
+                aiAppealPollCount++;
+                if (aiAppealPollCount > AI_APPEAL_MAX_POLLS) {
+                    stopAiAppealPolling();
+                    // Replace deliberating message with acceptance
+                    const el = document.querySelector('.appeal-deliberating');
+                    if (el) {
+                        el.innerHTML = '<span style="color: var(--text-muted);">The AI challenger accepted the ruling.</span>';
+                    }
+                    return;
+                }
+                try {
+                    const res = await fetch(`/api/game/${gameId}/results`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.appeal) {
+                            stopAiAppealPolling();
+                            renderFullResults(data);
+                        }
+                    }
+                } catch (e) { /* ignore poll errors */ }
+            }, 2000);
+        }
+
+        function stopAiAppealPolling() {
+            if (aiAppealPollTimer) {
+                clearInterval(aiAppealPollTimer);
+                aiAppealPollTimer = null;
+            }
         }
 
         function renderAppealForm(originalWinner) {
@@ -137,9 +199,17 @@
             const verdictClass = overturned ? 'appeal-overturned' : 'appeal-upheld';
             const verdictText = overturned ? 'OVERTURNED!' : 'UPHELD';
             const verdictIcon = overturned ? '&#x1F389;' : '&#x2696;';
+            const appellantLabel = appeal.appellant === 'ai' ? 'AI Challenger' : 'You';
 
             return `
                 <div class="appeal-section">
+                    <div class="appeal-court-header">
+                        <span class="appeal-court-icon">&#x2696;</span>
+                        <span class="appeal-court-title">Supreme Hot Dog Court</span>
+                    </div>
+                    <div class="appeal-filed-by">
+                        Appeal filed by: <strong>${appellantLabel}</strong>
+                    </div>
                     <div class="appeal-result ${verdictClass}">
                         <div class="appeal-verdict-banner">
                             <span class="appeal-gavel">${verdictIcon}</span>
@@ -152,7 +222,8 @@
 
                         ${appeal.appeal_text ? `
                             <div class="appeal-plea">
-                                <strong>The plea:</strong> "${escapeHtml(appeal.appeal_text)}"
+                                <div class="appeal-plea-label">${appellantLabel}'s plea:</div>
+                                <div class="appeal-plea-text">"${escapeHtml(appeal.appeal_text)}"</div>
                             </div>
                         ` : ''}
 
@@ -160,7 +231,8 @@
 
                         ${appeal.response_to_appellant ? `
                             <div class="appeal-response">
-                                <strong>To the appellant:</strong> ${escapeHtml(appeal.response_to_appellant)}
+                                <div class="appeal-response-label">To the appellant:</div>
+                                ${escapeHtml(appeal.response_to_appellant)}
                             </div>
                         ` : ''}
 

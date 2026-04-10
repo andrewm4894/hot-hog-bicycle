@@ -1,5 +1,7 @@
 import json
+import logging
 import random
+import threading
 import uuid
 import datetime
 from concurrent.futures import ThreadPoolExecutor
@@ -8,9 +10,11 @@ from .config import APP_BASE_URL, GENERATION_MODELS, CHALLENGER_MODELS, JUDGE_MO
 from .appeal import judge_appeal
 from .models import SessionLocal, Game, Round
 from .openrouter import generate_svg
-from .challenger import run_challenger_round
+from .challenger import run_challenger_round, consider_appeal
 from .judge import judge_game
 from .posthog_setup import posthog_client
+
+log = logging.getLogger("hot-hog")
 
 
 def _game_url(game_id: str) -> str:
@@ -362,7 +366,7 @@ def judge_and_reveal(game_id: str, session_id: str | None = None) -> dict:
             .all()
         )
 
-        return {
+        resp = {
             "game_id": game_id,
             "winner": winner,
             "human": {
@@ -395,6 +399,17 @@ def judge_and_reveal(game_id: str, session_id: str | None = None) -> dict:
             "judge_model": game.judge_model,
             "appeal": None,
         }
+
+        # If the AI lost, let it decide in the background whether to appeal
+        if winner == "human":
+            threading.Thread(
+                target=ai_consider_appeal,
+                args=(game_id,),
+                kwargs={"session_id": session_id},
+                daemon=True,
+            ).start()
+
+        return resp
     finally:
         db.close()
 
@@ -631,6 +646,46 @@ def create_game_from_fork(player_name: str, fork_round_id: int, session_id: str 
         db.close()
 
 
+def ai_consider_appeal(game_id: str, session_id: str | None = None) -> None:
+    """
+    Background task: let the AI challenger decide whether to appeal.
+    If it decides yes, automatically file the appeal.
+    """
+    db = SessionLocal()
+    try:
+        game = db.query(Game).filter(Game.id == game_id).first()
+        if not game or game.status != "complete":
+            return
+        if game.winner != "human":
+            return  # AI only appeals when it lost
+        if game.appeal_verdict:
+            return  # Already appealed
+
+        details = {}
+        if game.judge_details:
+            details = json.loads(game.judge_details)
+
+        plea = consider_appeal(
+            challenger_model=game.challenger_model,
+            human_svg=game.human_svg_final or "",
+            ai_svg=game.ai_svg_final or "",
+            judge_details=details,
+            trace_id=game_id,
+            session_id=session_id,
+            game_url=_game_url(game_id),
+        )
+
+        if plea:
+            log.info("AI auto-appeal for game %s: filing appeal", game_id)
+            appeal_game(game_id, plea, session_id=session_id)
+        else:
+            log.info("AI accepts ruling for game %s", game_id)
+    except Exception:
+        log.exception("AI appeal consideration failed for game %s", game_id)
+    finally:
+        db.close()
+
+
 def appeal_game(game_id: str, appeal_text: str, session_id: str | None = None) -> dict:
     """
     File an appeal on behalf of the losing side.
@@ -819,6 +874,7 @@ def get_results(game_id: str) -> dict | None:
             "generation_model": game.generation_model,
             "challenger_model": game.challenger_model,
             "judge_model": game.judge_model,
+            "completed_at": game.completed_at.isoformat() if game.completed_at else None,
             "appeal": _build_appeal_response(game),
         }
     finally:

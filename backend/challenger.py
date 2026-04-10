@@ -1,7 +1,12 @@
-from .config import ROUNDS_PER_GAME
-from .openrouter import chat_completion, generate_svg
-from .posthog_setup import prompts
-from .tools import CHALLENGER_TOOLS
+import json
+import logging
+
+from .config import ROUNDS_PER_GAME, TOOL_CAPABLE_MODELS
+from .openrouter import chat_completion, generate_svg, client
+from .posthog_setup import posthog_client, prompts
+from .tools import CHALLENGER_TOOLS, APPEAL_DECISION_TOOLS
+
+log = logging.getLogger("hot-hog")
 
 _CHALLENGER_FALLBACK = """\
 You are competing to create the best SVG of a hot dog riding a bicycle.
@@ -149,3 +154,130 @@ def run_challenger_round(
         "svg": svg,
         "raw_response": raw,
     }
+
+
+_APPEAL_DECISION_FALLBACK = """\
+You just competed in a Hot Dog on a Bicycle SVG art contest and LOST.
+
+You will see:
+- Both SVGs (yours and your opponent's)
+- The judge's scores, roasts, and verdict
+
+You have one tool available:
+- file_appeal(plea="...") — file an appeal with the Supreme Hot Dog Court
+
+Decide whether the ruling was fair. If you genuinely believe your SVG was
+scored unfairly, call file_appeal with a passionate (but concise) plea.
+If the judge got it right, accept the loss gracefully and just say so.
+
+Be selective — only appeal when you have a real argument, not every time.
+"""
+
+
+def consider_appeal(
+    challenger_model: str,
+    human_svg: str,
+    ai_svg: str,
+    judge_details: dict,
+    *,
+    trace_id: str | None = None,
+    session_id: str | None = None,
+    game_url: str | None = None,
+) -> str | None:
+    """
+    Give the AI challenger a chance to decide whether to appeal.
+
+    Calls the challenger model with the judge results and a file_appeal tool.
+    Returns the plea text if the AI wants to appeal, or None if it accepts.
+    """
+    system_prompt = prompts.get(
+        "hot-hog-appeal-decision", fallback=_APPEAL_DECISION_FALLBACK
+    )
+
+    human_scores = judge_details.get("human_scores", {})
+    ai_scores = judge_details.get("ai_scores", {})
+    commentary = judge_details.get("commentary", "No commentary")
+
+    summary = (
+        f"=== YOUR SVG (the AI challenger) ===\n{ai_svg}\n\n"
+        f"=== OPPONENT'S SVG (the human) ===\n{human_svg}\n\n"
+        f"=== JUDGE'S RULING ===\n"
+        f"Verdict: {commentary}\n"
+        f"Your scores: accuracy={ai_scores.get('accuracy', '?')}, "
+        f"creativity={ai_scores.get('creativity', '?')}, "
+        f"quality={ai_scores.get('quality', '?')}, "
+        f"humor={ai_scores.get('humor', '?')}, "
+        f"total={ai_scores.get('total', '?')}\n"
+        f"Your roast: {ai_scores.get('roast', 'N/A')}\n"
+        f"Opponent's scores: accuracy={human_scores.get('accuracy', '?')}, "
+        f"creativity={human_scores.get('creativity', '?')}, "
+        f"quality={human_scores.get('quality', '?')}, "
+        f"humor={human_scores.get('humor', '?')}, "
+        f"total={human_scores.get('total', '?')}\n"
+        f"Opponent's roast: {human_scores.get('roast', 'N/A')}"
+    )
+
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": summary},
+    ]
+
+    appeal_props = {"challenger_model": challenger_model}
+    if game_url:
+        appeal_props["game_url"] = game_url
+
+    # Use the raw client directly so we can inspect tool_calls without the
+    # chat_completion helper consuming them.
+    if challenger_model not in TOOL_CAPABLE_MODELS:
+        log.info("AI challenger model %s doesn't support tools, skipping appeal", challenger_model)
+        return None
+
+    from .openrouter import _session_props
+
+    try:
+        response = client.chat.completions.create(
+            model=challenger_model,
+            messages=messages,
+            tools=APPEAL_DECISION_TOOLS,
+            tool_choice="auto",
+            max_tokens=1024,
+            posthog_distinct_id="ai-challenger",
+            posthog_trace_id=trace_id,
+            posthog_properties={
+                "$ai_span_name": "appeal_decision",
+                "$ai_prompt_name": "hot-hog-appeal-decision",
+                **_session_props(session_id),
+                **appeal_props,
+            },
+        )
+
+        msg = response.choices[0].message
+        tool_calls = getattr(msg, "tool_calls", None) or []
+
+        for tc in tool_calls:
+            if tc.function.name == "file_appeal":
+                try:
+                    args = json.loads(tc.function.arguments or "{}")
+                except json.JSONDecodeError:
+                    args = {}
+                plea = args.get("plea", "")
+                if plea:
+                    log.info("AI challenger wants to appeal: %s", plea[:100])
+                    return plea[:500]
+
+        log.info("AI challenger accepts the ruling")
+        return None
+
+    except Exception as e:
+        log.warning("Appeal decision failed: %s", e)
+        posthog_client.capture_exception(
+            e,
+            distinct_id="ai-challenger",
+            properties={
+                "$ai_trace_id": trace_id,
+                "stage": "appeal_decision",
+                "error_type": "llm_api_error",
+                **appeal_props,
+            },
+        )
+        return None
