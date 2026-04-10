@@ -199,9 +199,17 @@
             const verdictClass = overturned ? 'appeal-overturned' : 'appeal-upheld';
             const verdictText = overturned ? 'OVERTURNED!' : 'UPHELD';
             const verdictIcon = overturned ? '&#x1F389;' : '&#x2696;';
+            const appellantLabel = appeal.appellant === 'ai' ? 'AI Challenger' : 'You';
 
             return `
                 <div class="appeal-section">
+                    <div class="appeal-court-header">
+                        <span class="appeal-court-icon">&#x2696;</span>
+                        <span class="appeal-court-title">Supreme Hot Dog Court</span>
+                    </div>
+                    <div class="appeal-filed-by">
+                        Appeal filed by: <strong>${appellantLabel}</strong>
+                    </div>
                     <div class="appeal-result ${verdictClass}">
                         <div class="appeal-verdict-banner">
                             <span class="appeal-gavel">${verdictIcon}</span>
@@ -214,7 +222,8 @@
 
                         ${appeal.appeal_text ? `
                             <div class="appeal-plea">
-                                <strong>The plea:</strong> "${escapeHtml(appeal.appeal_text)}"
+                                <div class="appeal-plea-label">${appellantLabel}'s plea:</div>
+                                <div class="appeal-plea-text">"${escapeHtml(appeal.appeal_text)}"</div>
                             </div>
                         ` : ''}
 
@@ -222,7 +231,8 @@
 
                         ${appeal.response_to_appellant ? `
                             <div class="appeal-response">
-                                <strong>To the appellant:</strong> ${escapeHtml(appeal.response_to_appellant)}
+                                <div class="appeal-response-label">To the appellant:</div>
+                                ${escapeHtml(appeal.response_to_appellant)}
                             </div>
                         ` : ''}
 

@@ -1266,10 +1266,46 @@ nav a.nav-docs-link:hover {
 /* ========== APPEAL SECTION ========== */
 
 .appeal-section {
-    margin-top: 2rem;
+    margin-top: 2.5rem;
     padding-top: 1.5rem;
-    border-top: 1px dashed var(--border);
+    border-top: 2px solid var(--border);
+    position: relative;
 }
+
+/* Court header */
+
+.appeal-court-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.appeal-court-icon {
+    font-size: 1.3rem;
+}
+
+.appeal-court-title {
+    font-family: var(--font-display);
+    font-size: 0.85rem;
+    color: var(--mustard);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.appeal-filed-by {
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-bottom: 1rem;
+}
+
+.appeal-filed-by strong {
+    color: var(--text-muted);
+}
+
+/* Appeal form (human filing) */
 
 .appeal-prompt {
     text-align: center;
@@ -1358,7 +1394,7 @@ nav a.nav-docs-link:hover {
 
 .appeal-result {
     border-radius: var(--radius);
-    padding: 1.25rem;
+    padding: 1.5rem;
     border: 2px solid var(--border);
     position: relative;
     overflow: hidden;
@@ -1378,17 +1414,18 @@ nav a.nav-docs-link:hover {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
+    gap: 0.6rem;
     margin-bottom: 0.75rem;
 }
 
 .appeal-gavel {
-    font-size: 1.4rem;
+    font-size: 1.6rem;
 }
 
 .appeal-verdict-text {
     font-family: var(--font-display);
-    font-size: 1.1rem;
+    font-size: 1.2rem;
+    letter-spacing: 0.04em;
 }
 
 .appeal-overturned .appeal-verdict-text {
@@ -1405,39 +1442,65 @@ nav a.nav-docs-link:hover {
     text-align: center;
     font-size: 0.8rem;
     color: var(--text-dim);
-    margin-bottom: 0.75rem;
+    margin-bottom: 1rem;
 }
 
 .appeal-plea {
     background: rgba(0, 0, 0, 0.2);
-    padding: 0.65rem 0.85rem;
+    padding: 0.75rem 1rem;
     border-radius: var(--radius-sm);
-    font-size: 0.85rem;
+    margin-bottom: 1rem;
+    border-left: 3px solid var(--mustard-dim);
+}
+
+.appeal-plea-label {
+    font-size: 0.7rem;
+    font-family: var(--font-display);
+    color: var(--text-dim);
+    margin-bottom: 0.35rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.appeal-plea-text {
+    font-size: 0.9rem;
     color: var(--text-muted);
-    margin-bottom: 0.75rem;
     font-style: italic;
+    line-height: 1.5;
 }
 
 .appeal-reasoning {
     text-align: center;
     font-size: 0.95rem;
     color: var(--text);
+    margin-bottom: 1rem;
+    line-height: 1.6;
+    padding: 0 0.5rem;
+}
+
+.appeal-response {
+    background: rgba(245, 158, 11, 0.06);
+    border: 1px solid rgba(245, 158, 11, 0.15);
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    color: var(--text);
     margin-bottom: 0.75rem;
     line-height: 1.5;
 }
 
-.appeal-response {
-    background: rgba(0, 0, 0, 0.25);
-    padding: 0.65rem 0.85rem;
-    border-radius: var(--radius-sm);
-    font-size: 0.85rem;
+.appeal-response-label {
+    font-size: 0.7rem;
+    font-family: var(--font-display);
     color: var(--mustard);
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.3rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
 .appeal-new-scores {
-    margin-top: 1rem;
-    padding-top: 0.75rem;
+    margin-top: 1.25rem;
+    padding-top: 1rem;
     border-top: 1px solid var(--border);
 }
 
@@ -1447,12 +1510,14 @@ nav a.nav-docs-link:hover {
     font-size: 0.8rem;
     color: var(--text-muted);
     margin-bottom: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
 }
 
 .appeal-scores-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 1rem;
+    gap: 1.25rem;
     text-align: center;
 }
 
